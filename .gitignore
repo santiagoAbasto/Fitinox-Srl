@@ -5,6 +5,17 @@
 auth.json
 *.pem
 *.key
+*.p12
+*.pfx
+*.crt
+*.csr
+*.sql
+*.sql.gz
+*.zip
+*.tar
+*.tar.gz
+*.bak
+*.backup
 
 # PHP / Laravel dependencies and generated state
 /vendor/

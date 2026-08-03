@@ -3,6 +3,7 @@
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SetPublicLocale;
 use App\Http\Middleware\TranslatePublicResponse;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -18,8 +19,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureAdminUser::class,
             'client' => \App\Http\Middleware\EnsureClientUser::class,
+            'admin.level' => \App\Http\Middleware\EnsureAdminLevel::class,
         ]);
         $middleware->web(append: [
+            SecurityHeaders::class,
             SetPublicLocale::class,
             HandleInertiaRequests::class,
             TranslatePublicResponse::class,

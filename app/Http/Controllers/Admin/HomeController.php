@@ -7,6 +7,7 @@ use App\Models\Page;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Services\HtmlSanitizer;
 
 class HomeController extends Controller
 {
@@ -68,8 +69,9 @@ class HomeController extends Controller
         $data['header_logo'] = $request->file('header_logo_file')?->store('home/header', 'public') ?? $data['header_logo'];
         $data['about_image'] = $request->file('about_image_file')?->store('home/about', 'public') ?? $data['about_image'];
         $data['industry_image'] = $request->file('industry_image_file')?->store('home/industry', 'public') ?? $data['industry_image'];
-        $data['about_body'] = $this->sanitizeRichText($data['about_body']);
-        $data['industry_text'] = $this->sanitizeRichText($data['industry_text']);
+        $sanitizer = app(HtmlSanitizer::class);
+        $data['about_body'] = $sanitizer->sanitize($data['about_body']);
+        $data['industry_text'] = $sanitizer->sanitize($data['industry_text']);
         $sections = array_merge($page->sections ?? [], collect($data)->except([
             'hero_title', 'hero_image', 'about_body', 'address', 'email_sales', 'email_quality',
             'email_warehouse', 'email_admin', 'phone', 'whatsapp', 'copyright',
@@ -116,7 +118,7 @@ class HomeController extends Controller
         $sections['about_image'] = $request->file('about_image_file')?->store('home/about', 'public') ?? $data['about_image'];
 
         $page->update([
-            'content' => $this->sanitizeRichText($data['about_body']),
+            'content' => app(HtmlSanitizer::class)->sanitize($data['about_body']),
             'sections' => $sections,
         ]);
 
@@ -145,7 +147,7 @@ class HomeController extends Controller
         $page = Page::where('slug', 'inicio')->firstOrFail();
         $sections = $page->sections ?? [];
         $sections['industry_title'] = $data['industry_title'];
-        $sections['industry_text'] = $this->sanitizeRichText($data['industry_text']);
+        $sections['industry_text'] = app(HtmlSanitizer::class)->sanitize($data['industry_text']);
         $sections['industry_button_label'] = $data['industry_button_label'];
         $sections['industry_button_url'] = $data['industry_button_url'];
         $sections['industry_is_active'] = $data['industry_is_active'];
@@ -156,32 +158,4 @@ class HomeController extends Controller
         return back()->with('success', 'El banner Oil & Gas fue actualizado.');
     }
 
-    private function sanitizeRichText(string $html): string
-    {
-        $html = preg_replace('/<div\b[^>]*>/iu', '<p>', $html) ?? $html;
-        $html = preg_replace('/<\/div>/iu', '</p>', $html) ?? $html;
-        $html = strip_tags($html, '<p><br><strong><b><em><i><u><ul><ol><li><blockquote><h2><h3><h4><a>');
-        $html = preg_replace('/\s+on\w+\s*=\s*(["\']).*?\1/iu', '', $html) ?? $html;
-        $html = preg_replace('/\s+style\s*=\s*(["\']).*?\1/iu', '', $html) ?? $html;
-        $html = preg_replace_callback('/<a\b([^>]*)href\s*=\s*(["\'])(.*?)\2([^>]*)>/iu', function (array $matches) {
-            $href = trim($matches[3]);
-
-            return preg_match('/^(https?:|mailto:|#)/i', $href)
-                ? '<a href="'.e($href).'">'
-                : '<a>';
-        }, $html) ?? $html;
-
-        $html = trim($html);
-
-        if (! str_contains($html, '<p') && preg_match('/<br\s*\/?>/i', $html)) {
-            $paragraphs = preg_split('/<br\s*\/?>/i', $html);
-            $html = collect($paragraphs)
-                ->map(fn ($paragraph) => trim($paragraph))
-                ->filter()
-                ->map(fn ($paragraph) => "<p>{$paragraph}</p>")
-                ->implode('');
-        }
-
-        return $html;
-    }
 }

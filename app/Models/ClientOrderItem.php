@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ClientOrderItem extends Model
 {
-    protected $guarded = [];
+    protected $fillable = ['client_order_id', 'product_id', 'product_variant_id', 'product_name', 'code', 'quantity', 'list_price', 'discount_percent', 'unit_price', 'line_total'];
 
     protected function casts(): array
     {

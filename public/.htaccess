@@ -5,6 +5,12 @@
 
     RewriteEngine On
 
+    # Block sensitive and executable files if they are copied under the web root.
+    RewriteRule "(^|/)\.(?!well-known/)" - [F,L,NC]
+    RewriteRule "(^|/)(composer\.(json|lock)|package(-lock)?\.json|phpunit\.xml|artisan|vite\.config\.(js|ts))$" - [F,L,NC]
+    RewriteRule "\.(env|ini|log|sql|bak|backup|zip|tar|gz|key|pem|phar|phtml|pht|cgi|pl|py|sh)$" - [F,L,NC]
+    RewriteRule "^(storage|uploads?)/.*\.(php[0-9]?|phtml|pht|phar|cgi|pl|py|sh)$" - [F,L,NC]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

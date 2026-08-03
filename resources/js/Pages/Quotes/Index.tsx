@@ -63,7 +63,7 @@ export default function Index({page,requests}:any) {
             <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-[#132b3b] text-white"><Package size={18}/></span><div><h2 className="text-[18px] font-semibold text-[#132b3b]">Solicitudes recibidas</h2><p className="mt-1 text-[11px] text-[#7a878e]">{requests.total} presupuestos registrados.</p></div></div>
             <div className="space-y-5">{requests.data.map((request:any)=><RequestCard key={request.id} request={request}/>)}</div>
             {requests.data.length===0&&<div className="rounded-2xl border border-dashed border-[#cfd8dc] bg-white py-16 text-center text-[12px] text-[#7a878e]">Todavía no se recibieron solicitudes.</div>}
-            {requests.links?.length>3&&<nav className="flex flex-wrap justify-center gap-2">{requests.links.map((link:any,index:number)=>link.url?<Link key={index} href={link.url} preserveScroll className={`grid min-h-9 min-w-9 place-items-center rounded-lg px-3 text-[10px] ${link.active?'bg-[#132b3b] text-white':'border border-[#dfe5e8] bg-white text-[#52636c]'}`} dangerouslySetInnerHTML={{__html:link.label}}/>:null)}</nav>}
+            {requests.links?.length>3&&<nav className="flex flex-wrap justify-center gap-2">{requests.links.map((link:any,index:number)=>link.url?<Link key={index} href={link.url} preserveScroll className={`grid min-h-9 min-w-9 place-items-center rounded-lg px-3 text-[10px] ${link.active?'bg-[#132b3b] text-white':'border border-[#dfe5e8] bg-white text-[#52636c]'}`}>{String(link.label).replace(/&laquo;/g,'«').replace(/&raquo;/g,'»')}</Link>:null)}</nav>}
         </div>
     </AdminLayout>;
 }

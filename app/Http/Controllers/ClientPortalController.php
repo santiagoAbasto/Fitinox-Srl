@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use App\Models\Setting;
+use App\Rules\SecureUpload;
+use Illuminate\Support\Facades\Gate;
 
 class ClientPortalController extends Controller
 {
@@ -109,9 +111,9 @@ class ClientPortalController extends Controller
             'transport_address' => ['nullable', 'string', 'max:255', 'required_if:delivery_method,transport'],
             'transport_phone' => ['nullable', 'string', 'max:60', 'required_if:delivery_method,transport'],
             'delivery_destination' => ['nullable', 'string', 'max:255', 'required_if:delivery_method,transport'],
-            'attachment' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:10240'],
+            'attachment' => ['nullable', 'file', new SecureUpload(), 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:10240'],
         ]);
-        $attachmentPath = $request->file('attachment')?->store('client-orders', 'public');
+        $attachmentPath = $request->file('attachment')?->store('client-orders', 'local');
 
         $order = DB::transaction(function () use ($client, $items, $data, $attachmentPath) {
             $subtotal = $items->sum('list_total');
@@ -165,7 +167,7 @@ class ClientPortalController extends Controller
     public function showOrder(Request $request, ClientOrder $clientOrder)
     {
         $client = $this->client($request);
-        abort_unless($clientOrder->user_id === $client->id, 404);
+        Gate::authorize('view', $clientOrder);
 
         return view('client.order-document', [
             'client' => $client,
@@ -177,7 +179,7 @@ class ClientPortalController extends Controller
     public function downloadOrder(Request $request, ClientOrder $clientOrder)
     {
         $client = $this->client($request);
-        abort_unless($clientOrder->user_id === $client->id, 404);
+        Gate::authorize('view', $clientOrder);
         $clientOrder->load('items');
         $locale = app()->getLocale();
         $translations = $this->pdfTranslations([
@@ -208,7 +210,7 @@ class ClientPortalController extends Controller
     public function viewPriceList(Request $request, ClientPriceList $clientPriceList)
     {
         $this->client($request);
-        abort_unless($clientPriceList->is_active && Storage::disk('public')->exists($clientPriceList->file_path), 404);
+        [$disk] = $this->priceListLocation($clientPriceList);
 
         $extension = strtolower(pathinfo($clientPriceList->file_path, PATHINFO_EXTENSION));
         $office = in_array($extension, ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'rtf'], true);
@@ -220,7 +222,7 @@ class ClientPortalController extends Controller
             'extension' => $extension,
             'office' => $office,
             'isLocal' => in_array($host, ['127.0.0.1', 'localhost', '::1'], true),
-            'rawUrl' => url(Storage::disk('public')->url($clientPriceList->file_path)),
+            'rawUrl' => route('client.price-list.stream', $clientPriceList),
             'downloadUrl' => route('client.price-list.download', $clientPriceList),
         ]);
     }
@@ -228,8 +230,32 @@ class ClientPortalController extends Controller
     public function downloadPriceList(Request $request, ClientPriceList $clientPriceList)
     {
         $this->client($request);
-        abort_unless($clientPriceList->is_active && Storage::disk('public')->exists($clientPriceList->file_path), 404);
-        return Storage::disk('public')->download($clientPriceList->file_path, $clientPriceList->name.'.'.pathinfo($clientPriceList->file_path, PATHINFO_EXTENSION));
+        [$disk] = $this->priceListLocation($clientPriceList);
+        return Storage::disk($disk)->download($clientPriceList->file_path, $clientPriceList->name.'.'.pathinfo($clientPriceList->file_path, PATHINFO_EXTENSION));
+    }
+
+    public function streamPriceList(Request $request, ClientPriceList $clientPriceList)
+    {
+        $this->client($request);
+        [$disk] = $this->priceListLocation($clientPriceList);
+        $path = Storage::disk($disk)->path($clientPriceList->file_path);
+        $mime = Storage::disk($disk)->mimeType($clientPriceList->file_path) ?: 'application/octet-stream';
+
+        return response()->file($path, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store, max-age=0',
+        ]);
+    }
+
+    private function priceListLocation(ClientPriceList $clientPriceList): array
+    {
+        Gate::authorize('view', $clientPriceList);
+        foreach (['local', 'public'] as $disk) {
+            if (Storage::disk($disk)->exists($clientPriceList->file_path)) return [$disk];
+        }
+        abort(404);
     }
 
     private function cartItems(Request $request)

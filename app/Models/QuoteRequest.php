@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class QuoteRequest extends Model
 {
-    protected $guarded = [];
+    protected $fillable = ['name', 'email', 'phone', 'company', 'notes', 'status'];
 
     public function items()
     {

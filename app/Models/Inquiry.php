@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Inquiry extends Model
 {
-    protected $guarded = [];
+    protected $fillable = ['type', 'name', 'company', 'email', 'phone', 'message', 'payload', 'status'];
 
     protected function casts(): array
     {

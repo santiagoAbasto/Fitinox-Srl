@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class HomeSlide extends Model
 {
-    protected $guarded = [];
+    protected $fillable = ['title', 'button_label', 'button_url', 'media_type', 'media_path', 'youtube_url', 'is_active', 'sort_order'];
 
     protected function casts(): array
     {

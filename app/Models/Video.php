@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Video extends Model
 {
-    protected $guarded = [];
+    protected $fillable = ['title', 'thumbnail', 'media_type', 'video_path', 'youtube_url', 'sort_order', 'is_active'];
 
     protected function casts(): array
     {

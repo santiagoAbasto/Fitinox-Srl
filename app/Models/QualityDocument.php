@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class QualityDocument extends Model
 {
-    protected $guarded = [];
+    protected $fillable = ['title', 'file', 'logo', 'sort_order', 'is_active'];
 
     protected function casts(): array
     {

@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     @vite('resources/css/app.css')
+    @if(config('services.turnstile.site_key'))<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>@endif
 </head>
 <body class="min-h-screen bg-white">
     <main class="grid min-h-screen lg:grid-cols-[46%_54%]">
@@ -34,6 +35,7 @@
 
                 <form method="post" action="{{ route('login.store') }}" class="mt-10">
                     @csrf
+                    <input type="text" name="website" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true"><input type="hidden" name="form_started_at" value="{{ now()->timestamp }}">
                     <label for="email" class="block text-sm font-medium text-[#35363a]">Email</label>
                     <input id="email" name="email" value="{{ old('email') }}" type="email" autocomplete="email" required autofocus
                         class="mt-2 h-12 w-full rounded-[6px] border border-[#cfd3d6] bg-white px-4 text-[15px] text-[#35363a] outline-none transition placeholder:text-gray-400 focus:border-fitinox focus:ring-2 focus:ring-fitinox/10"
@@ -53,6 +55,8 @@
                         <input name="remember" type="checkbox" value="1" class="size-4 rounded border-gray-300 accent-[#132b3b]">
                         Recordarme
                     </label>
+
+                    @if(config('services.turnstile.site_key'))<div class="cf-turnstile mt-5" data-sitekey="{{ config('services.turnstile.site_key') }}" data-action="login"></div>@endif
 
                     <button class="mt-8 flex h-12 w-full items-center justify-center rounded-[7px] bg-fitinox px-5 text-sm font-semibold tracking-[.04em] text-white transition hover:bg-[#1b3b50] focus:outline-none focus:ring-2 focus:ring-fitinox focus:ring-offset-2">
                         INGRESAR

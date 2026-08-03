@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Page extends Model
 {
-    protected $guarded = [];
+    protected $fillable = ['title', 'slug', 'template', 'hero_title', 'hero_image', 'content', 'sections', 'seo_title', 'seo_description', 'is_published', 'sort_order'];
 
     protected function casts(): array
     {

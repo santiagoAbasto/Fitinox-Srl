@@ -10,7 +10,7 @@ class EnsureAdminUser
 {
     public function handle(Request $request, Closure $next): Response
     {
-        abort_unless(in_array($request->user()?->role, ['super_admin', 'admin', 'editor'], true), 403);
+        abort_unless($request->user()?->is_active && in_array($request->user()?->role, ['super_admin', 'admin', 'editor'], true), 403);
 
         return $next($request);
     }

@@ -6,5 +6,5 @@ use Illuminate\Database\Eloquent\Model;
 
 class Translation extends Model
 {
-    protected $guarded = [];
+    protected $fillable = ['hash', 'source_locale', 'target_locale', 'source_text', 'translated_text'];
 }

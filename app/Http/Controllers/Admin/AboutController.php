@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Page;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Services\HtmlSanitizer;
 
 class AboutController extends Controller
 {
@@ -49,18 +50,11 @@ class AboutController extends Controller
         $page->update([
             'hero_title' => $data['hero_title'],
             'hero_image' => $request->file('hero_image_file')?->store('nosotros/hero', 'public') ?? $data['hero_image'],
-            'content' => $this->sanitize($data['content']),
+            'content' => app(HtmlSanitizer::class)->sanitize($data['content']),
             'sections' => $sections,
         ]);
 
         return back()->with('success', 'La página Nosotros fue actualizada.');
     }
 
-    private function sanitize(string $html): string
-    {
-        $html = preg_replace('/<div\b[^>]*>/iu', '<p>', $html) ?? $html;
-        $html = preg_replace('/<\/div>/iu', '</p>', $html) ?? $html;
-
-        return trim(strip_tags($html, '<p><br><strong><b><em><i><u><ul><ol><li><blockquote><h2><h3><h4><a>'));
-    }
 }

@@ -51,7 +51,7 @@ export default function RichTextEditor({ label, value, onChange, placeholder = '
     const savedRangeRef = useRef<Range | null>(null);
 
     useEffect(() => {
-        if (editorRef.current && editorRef.current.innerHTML !== value) editorRef.current.innerHTML = value || '';
+        if (editorRef.current && editorRef.current.innerHTML !== value) editorRef.current.innerHTML = sanitizeHtml(value || '');
     }, [value]);
 
     const saveSelection = () => {

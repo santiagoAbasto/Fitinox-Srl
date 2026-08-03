@@ -171,7 +171,10 @@ class SettingsController extends Controller
             'role.required' => 'Seleccioná un rol para el usuario.',
         ]);
         abort_unless($request->user()?->isSuperAdmin(), 403);
-        User::create([...$data, 'is_active' => true]);
+        $role = $data['role'];
+        unset($data['role']);
+        $user = User::create($data);
+        $user->forceFill(['role' => $role, 'is_active' => true])->save();
 
         return back()->with('success', 'Usuario administrativo creado.');
     }
@@ -199,7 +202,9 @@ class SettingsController extends Controller
         }
         if ($request->user()->is($user) && ! $data['is_active']) abort(422, 'No podés desactivar tu propia cuenta.');
         if (blank($data['password'])) unset($data['password']);
-        $user->update($data);
+        $securityAttributes = collect($data)->only(['role', 'is_active'])->all();
+        $profileAttributes = collect($data)->except(['role', 'is_active'])->all();
+        $user->fill($profileAttributes)->forceFill($securityAttributes)->save();
 
         return back()->with('success', 'Usuario administrativo actualizado.');
     }

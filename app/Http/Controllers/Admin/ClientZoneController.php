@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
+use App\Rules\SecureUpload;
 
 class ClientZoneController extends Controller
 {
@@ -45,7 +46,8 @@ class ClientZoneController extends Controller
         if (blank($password)) unset($data['password']);
         $data['is_active'] = $data['approval_status'] === 'approved';
         $data['deactivation_source'] = $data['is_active'] ? null : 'admin';
-        $user->update($data);
+        $securityAttributes = collect($data)->only(['approval_status', 'is_active', 'deactivation_source'])->all();
+        $user->fill(collect($data)->except(array_keys($securityAttributes))->all())->forceFill($securityAttributes)->save();
 
         if ($request->boolean('send_credentials') || ($data['approval_status'] === 'approved' && $user->wasChanged('approval_status'))) {
             try { Mail::to($user->email)->send(new ClientCredentialsMail($user->fresh(), $password)); } catch (\Throwable $exception) { report($exception); }
@@ -71,11 +73,11 @@ class ClientZoneController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:160'],
-            'file' => ['required', 'file', 'mimes:pdf,xls,xlsx,csv', 'max:51200'],
+            'file' => ['required', 'file', new SecureUpload(), 'mimes:pdf,xls,xlsx,csv', 'max:51200'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'is_active' => ['nullable', 'boolean'],
         ]);
-        $path = $request->file('file')->store('client-price-lists', 'public');
+        $path = $request->file('file')->store('client-price-lists', 'local');
         ClientPriceList::create([
             'name' => $data['name'],
             'file_path' => $path,
@@ -90,13 +92,13 @@ class ClientZoneController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:160'],
-            'file' => ['nullable', 'file', 'mimes:pdf,xls,xlsx,csv', 'max:51200'],
+            'file' => ['nullable', 'file', new SecureUpload(), 'mimes:pdf,xls,xlsx,csv', 'max:51200'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'is_active' => ['nullable', 'boolean'],
         ]);
         if ($request->hasFile('file')) {
-            Storage::disk('public')->delete($clientPriceList->file_path);
-            $data['file_path'] = $request->file('file')->store('client-price-lists', 'public');
+            $this->deletePriceListFile($clientPriceList->file_path);
+            $data['file_path'] = $request->file('file')->store('client-price-lists', 'local');
             $data['file_size'] = $request->file('file')->getSize();
         }
         $data['is_active'] = $request->boolean('is_active');
@@ -106,8 +108,15 @@ class ClientZoneController extends Controller
 
     public function destroyPriceList(ClientPriceList $clientPriceList)
     {
-        Storage::disk('public')->delete($clientPriceList->file_path);
+        $this->deletePriceListFile($clientPriceList->file_path);
         $clientPriceList->delete();
         return back()->with('success', 'Lista de precios eliminada.');
+    }
+
+    private function deletePriceListFile(?string $path): void
+    {
+        if (! $path) return;
+        Storage::disk('local')->delete($path);
+        Storage::disk('public')->delete($path); // Compatibilidad con archivos heredados.
     }
 }

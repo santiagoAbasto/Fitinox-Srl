@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ClientOrder extends Model
 {
-    protected $guarded = [];
+    protected $fillable = ['user_id', 'number', 'status', 'delivery_date', 'subtotal', 'discount_total', 'total', 'notes', 'delivery_method', 'transport_name', 'transport_address', 'transport_phone', 'delivery_destination', 'attachment_path'];
 
     protected function casts(): array
     {

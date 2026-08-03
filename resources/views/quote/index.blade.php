@@ -59,6 +59,7 @@
     <h2 class="ml-px mt-[42px] text-[32px] leading-[38px] font-medium text-[#132b3b]">Datos personales</h2>
     <form method="POST" action="{{ route('quote.store') }}" class="mt-[24px] grid gap-x-[24px] gap-y-[24px] lg:grid-cols-2">
         @csrf
+        <input type="text" name="website" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true"><input type="hidden" name="form_started_at" value="{{ now()->timestamp }}">
         @php($field = 'mt-[5px] h-[45px] w-full rounded-[4px] border border-[#dedfe0] bg-white px-[12px] text-[16px] text-[#35363a] outline-none transition focus:border-[#1954b7] focus:ring-2 focus:ring-[#1954b7]/10')
         <label class="text-[16px] leading-[24px] font-normal text-[#35363a]">Nombre y Apellido*
             <input name="name" value="{{ old('name') }}" required class="{{ $field }}">
@@ -79,6 +80,7 @@
             <textarea name="notes" class="mt-[5px] h-[157px] w-full resize-none rounded-[4px] border border-[#dedfe0] bg-white p-[12px] text-[16px] leading-[24px] outline-none transition focus:border-[#1954b7] focus:ring-2 focus:ring-[#1954b7]/10">{{ old('notes') }}</textarea>
         </label>
         <div class="relative ml-0 h-[198px]">
+            @if(config('services.turnstile.site_key'))<div class="cf-turnstile" data-sitekey="{{ config('services.turnstile.site_key') }}" data-action="quote"></div>@endif
             <p class="absolute top-[158px] left-0 text-[16px] leading-[24px] text-[#35363a]">*Datos obligatorios</p>
             @error('cart')<p class="absolute top-[125px] left-0 text-[11px] text-red-600">{{ $message }}</p>@enderror
             <button type="submit" {{ $items->isEmpty() ? 'disabled' : '' }} class="absolute top-[148px] right-0 inline-flex h-[36px] w-[170px] items-center justify-center gap-[10px] whitespace-nowrap rounded-[7px] bg-[#132b3b] px-5 py-2 text-[13px] font-medium tracking-[.03em] text-white shadow-none transition-[background-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:bg-[#1954b7] hover:shadow-[0_8px_20px_rgba(25,84,183,.24)] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#1954b7] active:translate-y-0 active:shadow-none disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:bg-[#132b3b] disabled:hover:shadow-none">ENVIAR SOLICITUD</button>

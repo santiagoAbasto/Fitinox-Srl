@@ -13,6 +13,8 @@ use App\Support\OrderCode;
 use Inertia\Inertia;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Services\HtmlSanitizer;
+use App\Rules\SecureUpload;
 
 class ProductController extends Controller
 {
@@ -108,7 +110,7 @@ class ProductController extends Controller
 
     public function import(Request $request, ProductSpreadsheetImporter $importer)
     {
-        $request->validate(['file' => ['required', 'file', 'mimes:xlsx,csv,txt', 'max:10240']]);
+        $request->validate(['file' => ['required', 'file', new SecureUpload(), 'mimes:xlsx,csv,txt', 'max:10240']]);
         try {
             $report = $importer->import($request->file('file'));
         } catch (\Throwable $exception) {
@@ -150,13 +152,13 @@ class ProductController extends Controller
             'sku' => ['nullable', 'max:100'],
             'summary' => ['nullable'],
             'description' => ['nullable'],
-            'main_image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'main_image_file' => ['nullable', 'image', new SecureUpload(true), 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'video_type' => ['nullable', 'in:upload,youtube'],
             'video_file' => ['nullable', 'mimes:mp4,webm,mov', 'max:102400'],
             'youtube_url' => ['nullable', 'url', 'max:255'],
             'gallery_files' => ['nullable', 'array', 'max:8'],
-            'gallery_files.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'datasheet_file' => ['nullable', 'mimes:pdf', 'max:20480'],
+            'gallery_files.*' => ['image', new SecureUpload(true), 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'datasheet_file' => ['nullable', new SecureUpload(), 'mimes:pdf', 'max:20480'],
             'is_featured' => ['boolean'],
             'is_active' => ['boolean'],
             'sort_order' => ['required', 'string', 'max:3', 'regex:/^[A-Z]+$/'],
@@ -179,6 +181,9 @@ class ProductController extends Controller
             $data['datasheet'] = $request->file('datasheet_file')->store('products/datasheets', 'public');
         }
         $data['slug'] = Str::slug($data['name']);
+        $data['description'] = filled($data['description'] ?? null)
+            ? app(HtmlSanitizer::class)->sanitize($data['description'])
+            : null;
 
         return $data;
     }
