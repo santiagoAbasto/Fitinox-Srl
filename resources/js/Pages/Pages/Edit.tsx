@@ -1,0 +1,11 @@
+import { Head, Link, useForm } from '@inertiajs/react';
+import AdminLayout from '../../Components/AdminLayout';
+
+export default function Edit({ page }: { page: any }) {
+    const form = useForm({ title: page.title || '', hero_title: page.hero_title || '', content: page.content || '', seo_title: page.seo_title || '', seo_description: page.seo_description || '', is_published: !!page.is_published });
+    const field = 'mt-2 w-full rounded-md border border-gray-200 px-4 py-3 outline-none focus:border-fitinox';
+    return <AdminLayout title={`Editar: ${page.title}`}><Head title={`Editar ${page.title}`}/><form onSubmit={e => {e.preventDefault(); form.put(`/admin/pages/${page.id}`)}} className="max-w-4xl rounded-xl border border-gray-200 bg-white p-8">
+        <div className="grid gap-6"><label className="text-sm font-medium">Título<input className={field} value={form.data.title} onChange={e=>form.setData('title',e.target.value)}/></label><label className="text-sm font-medium">Título del hero<input className={field} value={form.data.hero_title} onChange={e=>form.setData('hero_title',e.target.value)}/></label><label className="text-sm font-medium">Contenido<textarea rows={8} className={field} value={form.data.content} onChange={e=>form.setData('content',e.target.value)}/></label><div className="grid grid-cols-2 gap-5"><label className="text-sm font-medium">Título SEO<input className={field} value={form.data.seo_title} onChange={e=>form.setData('seo_title',e.target.value)}/></label><label className="text-sm font-medium">Descripción SEO<textarea rows={3} className={field} value={form.data.seo_description} onChange={e=>form.setData('seo_description',e.target.value)}/></label></div><label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={form.data.is_published} onChange={e=>form.setData('is_published',e.target.checked)}/> Página publicada</label></div>
+        <div className="mt-8 flex gap-3"><button disabled={form.processing} className="rounded-md bg-fitinox px-6 py-3 text-sm font-medium text-white">GUARDAR CAMBIOS</button><Link href="/admin/pages" className="rounded-md border border-gray-200 px-6 py-3 text-sm">CANCELAR</Link></div>
+    </form></AdminLayout>;
+}

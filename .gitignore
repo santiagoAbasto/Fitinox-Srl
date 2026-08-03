@@ -1,0 +1,70 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+auth.json
+*.pem
+*.key
+
+# PHP / Laravel dependencies and generated state
+/vendor/
+/bootstrap/cache/*.php
+/storage/framework/cache/**
+/storage/framework/sessions/**
+/storage/framework/testing/**
+/storage/framework/views/**
+/storage/logs/**
+/storage/pail/**
+/storage/*.key
+/database/*.sqlite
+/database/*.sqlite-*
+/.phpunit.cache/
+/.phpunit.result.cache
+/.phpactor.json
+/_ide_helper.php
+
+# Private licensed datasets
+/storage/app/geoip/*.mmdb
+
+# JavaScript dependencies and Vite output
+/node_modules/
+/public/build/
+/public/hot
+/public/storage
+/public/fonts-manifest.dev.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local agent tools and Superpowers
+/.superpowers/
+/docs/superpowers/
+/.agents/
+/.claude/
+/.codex/
+/.cursor/
+
+# Editors and operating systems
+/.idea/
+/.nova/
+/.vscode/
+/.zed/
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+
+# Generated working artifacts
+/tmp/
+/output/
+/coverage/
+/.cache/
+
+# Local development environments
+Homestead.json
+Homestead.yaml
+Vagrantfile
+docker-compose.override.yml
