@@ -27,10 +27,22 @@ class SecurityHeaders
         }
 
         if ($this->isHtml($response)) {
-            $header = config('security.csp.enforce')
+            $enforce = (bool) config('security.csp.enforce');
+            $directives = config('security.csp.directives', []);
+
+            // Browsers ignore this directive in report-only policies and log a
+            // noisy console error, so include it only when CSP is enforced.
+            if (! $enforce) {
+                $directives = array_values(array_filter(
+                    $directives,
+                    fn (string $directive) => $directive !== 'upgrade-insecure-requests',
+                ));
+            }
+
+            $header = $enforce
                 ? 'Content-Security-Policy'
                 : 'Content-Security-Policy-Report-Only';
-            $response->headers->set($header, implode('; ', config('security.csp.directives')));
+            $response->headers->set($header, implode('; ', $directives));
         }
 
         return $response;

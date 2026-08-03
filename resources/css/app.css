@@ -24,6 +24,14 @@
         margin-inline: auto;
     }
 
+    .home-hero {
+        /* Keep the complete hero in the first visible mobile/tablet viewport,
+           accounting for the persistent 80 px public header. */
+        height: calc(100vh - 80px);
+        height: calc(100svh - 80px);
+        min-height: 520px;
+    }
+
     @media (min-width: 640px) {
         .fitinox-shell,
         .fitinox-content-1224 {
@@ -183,6 +191,7 @@
         }
         #home-slider {
             height: 668px !important;
+            min-height: 668px;
         }
         #home-slider [data-hero-content] {
             top: 218px !important;

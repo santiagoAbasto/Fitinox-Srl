@@ -16,7 +16,7 @@ class AnalyticsController extends Controller
     public function __invoke(Request $request)
     {
         $days = min(365, max(1, (int)$request->integer('days', 30))); $from = now()->subDays($days-1)->startOfDay();
-        $payload = Cache::remember('analytics.dashboard.'.$days, 60, fn()=> $this->payload($from));
+        $payload = Cache::remember('analytics.dashboard.v2.'.$days, 60, fn()=> $this->payload($from));
         return Inertia::render('Analytics/Index', ['analytics'=>$payload,'filters'=>['days'=>$days],'configured'=>[
             'posthog'=>(bool)config('analytics.posthog.key'),'maxmind'=>is_readable((string)config('analytics.maxmind_database')),'cloudflare'=>(bool)config('services.cloudflare.api_token'),
         ]]);
@@ -39,6 +39,8 @@ class AnalyticsController extends Controller
             'pagesPerSession'=>$sessionCount?round($views/$sessionCount,2):0,'avgDuration'=>(int)((clone $human)->avg('duration_seconds')?:0),
             'bounceRate'=>$sessionCount?round($single/$sessionCount*100,1):0,'conversions'=>$conversions,'conversionRate'=>$sessionCount?round($conversions/$sessionCount*100,1):0,
             'bots'=>(clone $sessions)->where('is_bot',true)->count(),'activeNow'=>AnalyticsSession::where('last_seen_at','>=',now()->subMinutes(5))->where('is_bot',false)->count(),
-        ],'series'=>$series,'sources'=>$sources,'pages'=>$pages,'sections'=>$sections,'devices'=>$devices,'countries'=>$countries,'events'=>$events];
+        ],'series'=>$series->values()->all(),'sources'=>$sources->values()->all(),'pages'=>$pages->values()->all(),
+            'sections'=>$sections->values()->all(),'devices'=>$devices->values()->all(),'countries'=>$countries->values()->all(),
+            'events'=>$events->values()->all()];
     }
 }

@@ -4,11 +4,11 @@
 @section('meta_description', $page->seo_description ?: (($settings['seo_description'] ?? null) ?: 'Componentes y soluciones Fitinox para conducción, instrumentación y control de fluidos.'))
 
 @section('content')
-    <section id="home-slider" class="relative h-[520px] overflow-hidden bg-fitinox sm:h-[580px] md:h-[620px] min-[1224px]:h-[668px]">
+    <section id="home-slider" class="home-hero relative overflow-hidden bg-fitinox">
         @forelse($slides as $index => $slide)
             <article data-home-slide class="absolute inset-0 transition-opacity duration-500 {{ $index === 0 ? 'z-10 opacity-100' : 'pointer-events-none z-0 opacity-0' }}">
                 @if($slide->media_type === 'video' && $slide->media_path)
-                    <video class="absolute inset-0 h-full w-full object-cover" autoplay muted loop playsinline preload="{{ $index === 0 ? 'auto' : 'metadata' }}"><source src="{{ Storage::url($slide->media_path) }}"></video>
+                    <video class="absolute inset-0 h-full w-full object-cover object-center" autoplay muted loop playsinline preload="{{ $index === 0 ? 'auto' : 'metadata' }}"><source src="{{ Storage::url($slide->media_path) }}"></video>
                 @elseif($slide->media_type === 'youtube' && $slide->youtube_embed_url)
                     <iframe class="pointer-events-none absolute top-1/2 left-1/2 h-[56.25vw] min-h-full w-[177.78vh] min-w-full -translate-x-1/2 -translate-y-1/2" src="{{ $slide->youtube_embed_url }}" title="{{ $slide->title }}" allow="autoplay; encrypted-media" tabindex="-1"></iframe>
                 @else
