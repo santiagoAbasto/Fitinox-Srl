@@ -11,15 +11,19 @@ class DownloadController extends Controller
 {
     public function index()
     {
+        $settings = Setting::pluck('value', 'key');
+        abort_if(($settings['downloads_enabled'] ?? '1') === '0', 404);
+
         return view('downloads.index', [
             'page' => Page::where('slug', 'descargas')->where('is_published', true)->firstOrFail(),
             'downloads' => Download::where('is_active', true)->orderBy('sort_order')->orderBy('id')->get(),
-            'settings' => Setting::pluck('value', 'key'),
+            'settings' => $settings,
         ]);
     }
 
     public function view(Download $download)
     {
+        $this->ensureDownloadsEnabled();
         abort_unless($download->is_active, 404);
         abort_unless($download->file && Storage::disk('public')->exists($download->file), 404);
 
@@ -39,6 +43,7 @@ class DownloadController extends Controller
 
     public function raw(Download $download)
     {
+        $this->ensureDownloadsEnabled();
         abort_unless($download->is_active && $download->file && Storage::disk('public')->exists($download->file), 404);
         $path = Storage::disk('public')->path($download->file);
 
@@ -51,8 +56,14 @@ class DownloadController extends Controller
 
     public function download(Download $download)
     {
+        $this->ensureDownloadsEnabled();
         abort_unless($download->is_active && $download->file && Storage::disk('public')->exists($download->file), 404);
 
         return Storage::disk('public')->download($download->file);
+    }
+
+    private function ensureDownloadsEnabled(): void
+    {
+        abort_if(Setting::where('key', 'downloads_enabled')->value('value') === '0', 404);
     }
 }

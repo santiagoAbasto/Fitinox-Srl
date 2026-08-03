@@ -1,5 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { Eye, Image, KeyRound, Link2, MessageCircle, Pencil, Plus, Save, SearchCheck, ShieldCheck, UploadCloud, Users } from 'lucide-react';
+import { Eye, Image, KeyRound, Link2, MessageCircle, PanelTop, Pencil, Plus, Save, SearchCheck, ShieldCheck, UploadCloud, Users } from 'lucide-react';
 import AdminLayout from '../../Components/AdminLayout';
 import { useRef, useState } from 'react';
 
@@ -77,6 +77,8 @@ export default function Edit({ settings, users, seo = {}, seoPages = [], canMana
         seo_keywords: settings.seo_keywords || 'fitinox, conexiones, válvulas, acero inoxidable, control de fluidos',
         seo_og_image_file: null,
         remove_seo_og_image: false,
+        downloads_enabled: settings.downloads_enabled !== '0',
+        client_area_enabled: settings.client_area_enabled !== '0',
         whatsapp_enabled: settings.whatsapp_enabled !== '0',
         whatsapp_number: settings.whatsapp_number || '5491140732016',
         whatsapp_message: settings.whatsapp_message || 'Hola Fitinox, quisiera realizar una consulta.',
@@ -150,6 +152,13 @@ export default function Edit({ settings, users, seo = {}, seoPages = [], canMana
             <Section id="seo-pages" title="SEO por página" description="Cada sección puede tener su propio título, descripción e imagen para compartir." icon={SearchCheck}>
                 <div className="rounded-xl border border-[#1954b7]/15 bg-[#edf3f7]/70 p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-[12px] font-semibold text-[#132b3b]">Control de visibilidad por sección</p><p className="mt-1 text-[10px] leading-4 text-[#718087]">Completá título, descripción y palabras clave para independizar una página del SEO global. La imagen siempre es opcional.</p></div><span className="inline-flex w-fit items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[10px] font-semibold text-[#1954b7]"><span className="size-1.5 rounded-full bg-[#1954b7]"/>{seoPages.filter((page:any)=>page.seoTitle && page.seoDescription && page.seoKeywords).length} de {seoPages.length} completas</span></div></div>
                 <div className="mt-4 space-y-3">{seoPages.map((page:any)=><PageSeoCard key={page.id} page={page} fallbackImageUrl={seo.fallbackImageUrl}/>)}</div>
+            </Section>
+
+            <Section id="visibilidad-publica" title="Visibilidad pública" description="Controlá qué accesos aparecen en la navegación, el menú móvil y el footer." icon={PanelTop}>
+                <div className="grid gap-4 md:grid-cols-2">
+                    <Switch checked={form.data.downloads_enabled} onChange={(value:boolean)=>form.setData('downloads_enabled',value)} label="Mostrar Descargas" description="Al desactivarlo se ocultan la sección, el encabezado, el menú móvil y el enlace del footer."/>
+                    <Switch checked={form.data.client_area_enabled} onChange={(value:boolean)=>form.setData('client_area_enabled',value)} label="Mostrar Zona Clientes" description="Al desactivarlo se ocultan los accesos de Clientes en desktop y móvil."/>
+                </div>
             </Section>
 
             <Section id="whatsapp" title="WhatsApp flotante" description="Configura el botón de contacto que aparece sobre las páginas públicas." icon={MessageCircle}>

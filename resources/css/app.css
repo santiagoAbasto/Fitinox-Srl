@@ -14,20 +14,198 @@
 @layer base {
     html { scroll-behavior: smooth; }
     body { @apply m-0 bg-white font-sans text-[#35363a] antialiased; }
+    img, video, iframe { max-width: 100%; }
 }
 
 @layer components {
-    /* A single coordinate system for the private portal.  It deliberately
-       doesn't depend on responsive Tailwind width utilities, so translated
-       labels can never make the 1224 px canvas expand to the viewport. */
+    .fitinox-shell,
     .fitinox-content-1224 {
-        width: min(1224px, calc(100% - 40px));
+        width: min(1224px, calc(100% - 32px));
         margin-inline: auto;
+    }
+
+    @media (min-width: 640px) {
+        .fitinox-shell,
+        .fitinox-content-1224 {
+            width: min(1224px, calc(100% - 40px));
+        }
+    }
+
+    .mobile-nav-trigger {
+        width: 44px;
+        height: 44px;
+        color: #132b3b;
+        border-radius: 7px;
+    }
+    .mobile-nav-trigger:focus-visible,
+    .mobile-nav-panel a:focus-visible,
+    .mobile-nav-panel button:focus-visible {
+        outline: 2px solid #1954b7;
+        outline-offset: 2px;
+    }
+    .mobile-nav-overlay {
+        position: fixed;
+        z-index: 60;
+        inset: 0;
+        visibility: hidden;
+        cursor: pointer;
+        border: 0;
+        background: rgb(19 43 59 / .46);
+        opacity: 0;
+        transition: opacity 220ms ease, visibility 0s linear 220ms;
+    }
+    .mobile-nav-panel {
+        position: fixed;
+        z-index: 70;
+        top: 0;
+        right: 0;
+        width: min(390px, 100%);
+        height: 100dvh;
+        overflow-y: auto;
+        visibility: hidden;
+        padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) 20px;
+        background: #fff;
+        box-shadow: -20px 0 55px rgb(19 43 59 / .2);
+        transform: translateX(100%);
+        transition: transform 260ms cubic-bezier(.22, 1, .36, 1), visibility 0s linear 260ms;
+    }
+    [data-mobile-nav-root].is-open .mobile-nav-overlay,
+    [data-mobile-nav-root].is-open .mobile-nav-panel {
+        visibility: visible;
+        transition-delay: 0s;
+    }
+    [data-mobile-nav-root].is-open .mobile-nav-overlay { opacity: 1; }
+    [data-mobile-nav-root].is-open .mobile-nav-panel { transform: translateX(0); }
+    body.mobile-nav-open { overflow: hidden; }
+    .responsive-table-region {
+        max-width: 100%;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    @media (max-width: 1223px) {
+        main { overflow-x: clip; }
+        main input:not([type='checkbox']):not([type='radio']),
+        main select,
+        main textarea { max-width: 100%; }
+        main [class*='w-[600px]'],
+        main [class*='w-[599px]'],
+        main [class*='w-[551px]'],
+        main [class*='w-[506px]'] { max-width: 100%; }
+        main table { font-size: 14px; }
+        main .overflow-x-auto {
+            max-width: 100%;
+            overscroll-behavior-inline: contain;
+            -webkit-overflow-scrolling: touch;
+        }
+        .client-area footer { height: auto !important; }
+        .client-area footer > .fitinox-content-1224 {
+            height: auto !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 40px !important;
+            padding-block: 48px !important;
+        }
+        .client-area footer > .fitinox-content-1224 > div { padding-top: 0 !important; }
+        .client-area footer > .fitinox-content-1224 > div:last-child > * {
+            position: static !important;
+            width: auto !important;
+            height: auto !important;
+        }
+        .client-area footer > .fitinox-content-1224 > div:last-child > img { margin-top: 18px; }
+        .client-area footer > .fitinox-content-1224 > div:last-child > div,
+        .client-area footer > .fitinox-content-1224 > div:last-child > a {
+            overflow-wrap: anywhere;
+        }
+        .client-area footer > div:last-child > .fitinox-content-1224 {
+            min-height: 67px;
+            height: auto;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 4px;
+            padding-block: 12px;
+        }
+        .product-variants-table,
+        .product-variants-table tbody { display: block !important; }
+        .product-variants-table colgroup,
+        .product-variants-table thead { display: none !important; }
+        .product-variants-table tr {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            height: auto !important;
+            margin-bottom: 16px;
+            padding: 16px;
+            border: 1px solid #dedfe0 !important;
+            border-radius: 8px;
+            background: #fff !important;
+        }
+        .product-variants-table .variant-cell {
+            display: flex !important;
+            min-width: 0;
+            flex-direction: column;
+            gap: 4px;
+            padding: 0 !important;
+            overflow-wrap: anywhere;
+        }
+        .product-variants-table .variant-cell::before {
+            content: attr(data-label);
+            color: #132b3b;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .product-variants-table .variant-action {
+            display: block !important;
+            grid-column: 1 / -1;
+            padding: 4px 0 0 !important;
+        }
+        .product-variants-table .variant-action a {
+            width: 100% !important;
+            min-height: 44px !important;
+            height: auto !important;
+        }
+    }
+
+    @media (max-width: 767px) {
+        .client-area footer > .fitinox-content-1224 { grid-template-columns: minmax(0, 1fr) !important; }
+        .client-area footer form { width: 100% !important; max-width: 289px; }
+    }
+
+    @media (min-width: 1224px) {
+        .fitinox-shell,
+        .fitinox-content-1224 {
+            width: min(1224px, 100%);
+        }
+        [data-public-header] .fitinox-shell > a > img {
+            width: 263px;
+            height: 47px;
+        }
+        #home-slider {
+            height: 668px !important;
+        }
+        #home-slider [data-hero-content] {
+            top: 218px !important;
+            bottom: auto !important;
+        }
+        body:not(.client-area) footer#footer { height: 415px; }
+        body:not(.client-area) footer#footer > .fitinox-shell.grid {
+            height: 348px;
+            grid-template-columns: 262px 363px 310px 289px;
+            gap: 0;
+            padding-block: 0;
+        }
+        body:not(.client-area) footer#footer > .fitinox-shell.grid > div:first-child { padding-top: 51px; }
+        body:not(.client-area) footer#footer > .fitinox-shell.grid > div:not(:first-child) { padding-top: 45px; }
+        .mobile-nav-overlay,
+        .mobile-nav-panel {
+            display: none;
+        }
     }
 
     /* English menu labels are wider. Keep the complete account/navigation
        group pinned to the same right edge as the 1224 px canvas. */
-    @media (min-width: 1280px) {
+    @media (min-width: 1224px) {
         .client-header-actions--en {
             right: 0;
             left: auto;
@@ -104,6 +282,13 @@
         box-shadow: 0 18px 45px rgb(19 43 59 / 0.12);
         transform: translateY(-5px);
     }
+    @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        .mobile-nav-overlay,
+        .mobile-nav-panel {
+            transition-duration: 0.01ms;
+        }
+    }
     .admin-rich-text h2 { @apply mt-6 mb-2 text-2xl font-semibold leading-tight text-[#132b3b]; }
     .admin-rich-text h3 { @apply mt-5 mb-2 text-xl font-semibold leading-tight text-[#132b3b]; }
     .admin-rich-text h4 { @apply mt-4 mb-2 text-base font-semibold text-[#132b3b]; }
@@ -112,10 +297,12 @@
     .admin-rich-text ol { @apply mb-3 list-decimal pl-6; }
     .admin-rich-text blockquote { @apply my-4 border-l-2 border-[#002fa7] pl-4 text-[#5d6870]; }
     .admin-rich-text a { @apply text-[#002fa7] underline underline-offset-2; }
-    #distributor-map .leaflet-tile-pane {
+    #distributor-map .leaflet-tile-pane,
+    #contact-map .leaflet-tile-pane {
         filter: grayscale(1) contrast(.88) brightness(1.08);
     }
-    #distributor-map .leaflet-control-zoom {
+    #distributor-map .leaflet-control-zoom,
+    #contact-map .leaflet-control-zoom {
         margin-top: 18px;
         margin-left: 18px;
         overflow: hidden;
@@ -123,7 +310,8 @@
         border-radius: 7px;
         box-shadow: 0 5px 20px rgb(19 43 59 / 0.16);
     }
-    #distributor-map .leaflet-control-zoom a {
+    #distributor-map .leaflet-control-zoom a,
+    #contact-map .leaflet-control-zoom a {
         display: grid;
         width: 34px;
         height: 34px;
@@ -133,22 +321,28 @@
         font-family: Montserrat, sans-serif;
         line-height: 1;
     }
-    #distributor-map .leaflet-control-zoom-in { border-bottom: 1px solid #dedfe0 !important; }
-    #distributor-map .leaflet-control-attribution {
+    #distributor-map .leaflet-control-zoom-in,
+    #contact-map .leaflet-control-zoom-in { border-bottom: 1px solid #dedfe0 !important; }
+    #distributor-map .leaflet-control-attribution,
+    #contact-map .leaflet-control-attribution {
         background: rgb(255 255 255 / .76);
         color: #68767d;
         font-size: 8px;
         backdrop-filter: blur(6px);
     }
-    #distributor-map .leaflet-popup-content-wrapper {
+    #distributor-map .leaflet-popup-content-wrapper,
+    #contact-map .leaflet-popup-content-wrapper {
         overflow: hidden;
         border: 1px solid rgb(19 43 59 / .08);
         border-radius: 10px;
         box-shadow: 0 20px 55px rgb(19 43 59 / .24);
     }
-    #distributor-map .leaflet-popup-content { margin: 0; }
-    #distributor-map .leaflet-popup-tip { box-shadow: 4px 4px 12px rgb(19 43 59 / .08); }
-    #distributor-map .leaflet-popup-close-button {
+    #distributor-map .leaflet-popup-content,
+    #contact-map .leaflet-popup-content { margin: 0; }
+    #distributor-map .leaflet-popup-tip,
+    #contact-map .leaflet-popup-tip { box-shadow: 4px 4px 12px rgb(19 43 59 / .08); }
+    #distributor-map .leaflet-popup-close-button,
+    #contact-map .leaflet-popup-close-button {
         top: 8px;
         right: 8px;
         z-index: 2;
@@ -200,6 +394,83 @@
         font-weight: 700;
         letter-spacing: .04em;
     }
+
+    .floating-whatsapp-pulse {
+        isolation: isolate;
+        transition: box-shadow 220ms ease, background-color 220ms ease;
+    }
+    .floating-whatsapp-pulse::before,
+    .floating-whatsapp-pulse::after {
+        position: absolute;
+        z-index: -1;
+        border-radius: 9999px;
+        content: '';
+        pointer-events: none;
+    }
+    .floating-whatsapp-pulse::before {
+        inset: -7px;
+        border: 2px solid rgb(78 225 120 / .68);
+        animation: whatsapp-ring 2.8s cubic-bezier(.22, 1, .36, 1) infinite;
+    }
+    .floating-whatsapp-pulse::after {
+        inset: -3px;
+        background: linear-gradient(135deg, rgb(68 220 108 / .32), rgb(25 84 183 / .18));
+        animation: whatsapp-glow 2.8s ease-in-out infinite;
+    }
+    .floating-whatsapp-pulse > img {
+        animation: whatsapp-heartbeat 2.8s ease-in-out infinite;
+        transform-origin: center;
+    }
+    .floating-whatsapp-pulse:hover {
+        background-color: #11a841;
+        box-shadow: 0 16px 46px rgb(25 189 75 / .5);
+    }
+}
+
+@media (min-width: 1224px) {
+    [data-videos-grid] {
+        grid-template-columns: repeat(3, minmax(0, 392px)) !important;
+        gap: 48px 24px !important;
+    }
+}
+
+@media (max-width: 640px) {
+    #contact-map .leaflet-control-zoom {
+        margin-top: 14px;
+        margin-left: 14px;
+    }
+    #contact-map .leaflet-popup {
+        width: min(288px, calc(100vw - 64px)) !important;
+    }
+    #contact-map .leaflet-popup-content-wrapper {
+        border-radius: 14px;
+    }
+    #contact-map .leaflet-popup-content {
+        width: auto !important;
+    }
+    #contact-map .fitinox-map-popup {
+        padding: 20px;
+    }
+    #contact-map .fitinox-map-popup h3 {
+        font-size: 18px;
+        line-height: 24px;
+    }
+    #contact-map .fitinox-map-popup > p:not(.fitinox-map-eyebrow) {
+        margin: 0;
+        color: #56656d;
+        font-size: 13px;
+        line-height: 20px;
+    }
+    #contact-map .fitinox-map-directions {
+        display: flex;
+        min-height: 44px;
+        justify-content: center;
+        margin-top: 18px;
+        background: #132b3b;
+        font-size: 11px;
+        box-shadow: none !important;
+        transform: none !important;
+    }
 }
 
 @keyframes locale-header-out {
@@ -209,6 +480,24 @@
 @keyframes locale-label-pulse {
     50% { opacity: .55; transform: translateY(-2px) scale(.97); }
     to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes whatsapp-heartbeat {
+    0%, 34%, 100% { transform: scale(1); }
+    8% { transform: scale(1.14); }
+    15% { transform: scale(.98); }
+    22% { transform: scale(1.1); }
+}
+
+@keyframes whatsapp-ring {
+    0%, 34% { opacity: 0; transform: scale(.82); }
+    8% { opacity: .8; }
+    32%, 100% { opacity: 0; transform: scale(1.38); }
+}
+
+@keyframes whatsapp-glow {
+    0%, 34%, 100% { opacity: .38; transform: scale(1); }
+    10%, 23% { opacity: .8; transform: scale(1.14); }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -2,20 +2,20 @@
 @section('title', $page->seo_title ?: 'Videos | Fitinox')
 @section('meta_description', $page->seo_description ?: 'Videos institucionales, instructivos y novedades de Fitinox.')
 @section('content')
-<section class="relative h-[300px] overflow-hidden">
+<section data-public-hero class="relative h-[240px] overflow-hidden min-[1224px]:h-[300px]">
     <img src="{{ Storage::url($page->hero_image ?: 'figma/videos/hero.png') }}" alt="" class="absolute inset-0 h-full w-full object-cover object-center">
     <div class="absolute inset-0 bg-gradient-to-l from-[#1954b7] to-[#132b3b] opacity-80 mix-blend-multiply"></div>
-    <div data-hero-content class="relative mx-auto h-full w-[calc(100%-40px)] max-w-[1224px] text-white xl:w-full">
+    <div data-public-hero-content class="fitinox-content-1224 relative h-full text-white">
         <p class="pt-[24px] text-[12px] leading-[18px]"><a href="/" class="font-bold">Inicio</a> &gt; Videos</p>
-        <h1 class="absolute top-[202px] left-0 w-[529px] text-[40px] leading-[48px] font-semibold">{{ $page->hero_title ?: 'Videos' }}</h1>
+        <h1 class="absolute bottom-10 left-0 text-[32px] leading-[1.2] font-semibold sm:text-[36px] min-[1224px]:top-[202px] min-[1224px]:bottom-auto min-[1224px]:w-[529px] min-[1224px]:text-[40px]">{{ $page->hero_title ?: 'Videos' }}</h1>
     </div>
 </section>
 
-<section class="mx-auto w-[calc(100%-40px)] max-w-[1224px] py-[80px] lg:h-[587px] lg:py-0 lg:pt-[80px] xl:w-full">
-    <div class="grid gap-10 md:grid-cols-2 lg:grid-cols-3 lg:gap-[24px]">
+<section class="fitinox-content-1224 py-12 sm:py-16 min-[1224px]:!py-[80px]">
+    <div data-videos-grid class="grid gap-10 md:grid-cols-2 min-[1224px]:gap-[24px]">
         @foreach($videos as $video)
             @php($hasMedia = $video->video_path || $video->youtube_url)
-            <article data-reveal class="w-full lg:w-[392px]">
+            <article data-reveal class="w-full min-[1224px]:w-[392px]">
                 <button type="button"
                     @if($hasMedia) data-video-open data-type="{{ $video->media_type }}" data-source="{{ $video->media_type === 'video' ? Storage::url($video->video_path) : $video->youtube_embed_url }}" @endif
                     class="group relative block h-[256px] w-full overflow-hidden rounded-[8px] bg-[#132b3b] text-left {{ $hasMedia ? 'cursor-pointer' : 'cursor-default' }}"

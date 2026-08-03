@@ -11,7 +11,7 @@
     @php($selectedCategory = $categories->firstWhere('id', (int) ($query['category'] ?? 0))?->name ?? 'Todas las categorías')
 
     <form method="GET" class="relative mt-[48px] flex flex-col gap-5 xl:h-[48px] xl:block">
-        <label class="flex h-[48px] w-[287px] items-center rounded-[6px] border border-[#dedfe0] bg-white px-[18px]">
+        <label class="flex h-[48px] w-full items-center rounded-[6px] border border-[#dedfe0] bg-white px-[18px] sm:w-[287px]">
             <span class="sr-only">¿Qué estás buscando?</span>
             <button type="submit" aria-label="Buscar" class="grid size-5 shrink-0 place-items-center text-[#132b3b]">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M17.5 17.5L13.8833 13.8833M15.8333 9.16667C15.8333 12.8486 12.8486 15.8333 9.16667 15.8333C5.48477 15.8333 2.5 12.8486 2.5 9.16667C2.5 5.48477 5.48477 2.5 9.16667 2.5C12.8486 2.5 15.8333 5.48477 15.8333 9.16667Z" stroke="#132B3B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -19,9 +19,9 @@
             <input name="q" value="{{ $query['q'] ?? '' }}" placeholder="¿Qué estás buscando?" class="ml-[16px] min-w-0 grow bg-transparent text-[16px] font-normal leading-[24px] text-[#35363a] outline-none placeholder:text-[#35363a]">
         </label>
 
-        <label class="flex h-[24px] max-w-full items-center whitespace-nowrap text-[16px] font-normal leading-normal text-[#262424] xl:absolute xl:top-[13px] xl:right-0">
+        <label class="flex max-w-full flex-col items-start gap-2 text-[15px] font-normal leading-normal text-[#262424] sm:flex-row sm:items-center sm:gap-0 sm:text-[16px] sm:whitespace-nowrap xl:absolute xl:top-[13px] xl:right-0">
             <span class="shrink-0">Filtrar por categoría:</span>
-            <span class="relative ml-[12px] inline-flex h-6 w-[198px] shrink-0 items-center pr-[28px]">
+            <span class="relative inline-flex h-11 w-full min-w-0 items-center rounded-[6px] border border-[#dedfe0] px-3 pr-[36px] sm:ml-[12px] sm:h-6 sm:w-[198px] sm:shrink-0 sm:rounded-none sm:border-0 sm:px-0 sm:pr-[28px]">
                 <span class="block truncate text-[16px] font-semibold leading-normal text-[#262424]">{{ $selectedCategory }}</span>
                 <select name="category" onchange="this.form.submit()" aria-label="Filtrar por categoría" class="absolute inset-0 h-6 w-full cursor-pointer appearance-none opacity-0">
                     <option value="">Todas las categorías</option>

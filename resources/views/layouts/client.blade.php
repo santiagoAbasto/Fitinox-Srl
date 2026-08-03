@@ -1,18 +1,19 @@
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}">
 <head>
-    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>@yield('title', 'Zona Clientes | Fitinox')</title>
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/public-motion.js'])
 </head>
-<body class="min-h-screen bg-white font-[Montserrat] text-[#35363a]">
+<body class="client-area min-h-screen bg-white font-[Montserrat] text-[#35363a]">
     @php($settings = $settings ?? \App\Models\Setting::pluck('value', 'key'))
-    <header data-public-header class="sticky top-0 z-50 h-[100px] bg-white shadow-[0_4px_4px_rgba(0,0,0,.08)]">
+    <div data-mobile-nav-root>
+    <header data-public-header class="sticky top-0 z-50 h-[80px] bg-white shadow-[0_4px_4px_rgba(0,0,0,.08)] min-[1224px]:h-[100px]">
         <div class="relative fitinox-content-1224 h-full">
-            <button type="button" data-private-public-link class="absolute top-[26px] left-0 cursor-pointer" aria-label="Ir al sitio público"><img src="/storage/figma/header-footer/header-logo.png" alt="Fitinox" class="h-[47px] w-[259.532px] max-w-[60vw] object-cover"></button>
-            <div class="client-header-actions {{ app()->getLocale() === 'en' ? 'client-header-actions--en' : '' }} hidden xl:absolute xl:top-[32px] xl:left-[525.502px] xl:flex xl:h-[36px] xl:items-center">
+            <button type="button" data-private-public-link class="absolute top-[19px] left-0 cursor-pointer min-[1224px]:top-[26px]" aria-label="Ir al sitio público"><img src="/storage/figma/header-footer/header-logo.png" alt="Fitinox" class="h-auto w-[180px] object-contain sm:w-[220px] min-[1224px]:h-[47px] min-[1224px]:w-[259.532px]"></button>
+            <div class="client-header-actions {{ app()->getLocale() === 'en' ? 'client-header-actions--en' : '' }} hidden min-[1224px]:absolute min-[1224px]:top-[32px] min-[1224px]:left-[525.502px] min-[1224px]:flex min-[1224px]:h-[36px] min-[1224px]:items-center">
                 <nav aria-label="Zona Clientes" class="flex items-center gap-[14px] whitespace-nowrap text-center text-[14px] leading-[21px] text-[#35363a]">
                     <a href="{{ route('client.products') }}" class="transition hover:text-[#1954b7] {{ request()->routeIs('client.products') ? 'font-bold' : 'font-normal' }}">Productos</a>
                     <a href="{{ route('client.cart') }}" class="transition hover:text-[#1954b7] {{ request()->routeIs('client.cart') ? 'font-bold' : 'font-normal' }}">Carrito</a>
@@ -24,13 +25,27 @@
                 @include('components.locale-menu', ['class' => 'ml-[23px] inline-flex text-center text-[16px] font-normal leading-[24px] text-[#132b3b]'])
                 <button type="button" data-client-menu-trigger aria-expanded="false" aria-controls="client-account-menu" class="ml-[34px] inline-flex h-[36px] w-[120px] items-center justify-center gap-[10px] rounded-[7px] bg-[#132b3b] px-[20px] py-[8px] text-[14px] font-normal leading-[21px] text-white transition hover:bg-[#1954b7]" title="{{ $client->name }}"><img src="/storage/figma/header-footer/users.svg" alt="" class="size-6 shrink-0 brightness-0 invert"><span class="truncate">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::limit($client->name, 6, '')) }}</span></button>
             </div>
-            <div class="absolute top-[32px] right-0 flex h-[36px] items-center xl:hidden"><button type="button" data-client-menu-trigger aria-expanded="false" aria-controls="client-account-menu" class="inline-flex h-[36px] w-[120px] items-center justify-center gap-[10px] rounded-[7px] bg-[#132b3b] px-[20px] py-[8px] text-[14px] font-normal leading-[21px] text-white transition hover:bg-[#1954b7]"><img src="/storage/figma/header-footer/users.svg" alt="" class="size-6 shrink-0 brightness-0 invert"><span class="truncate">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::limit($client->name, 6, '')) }}</span></button></div>
+            <button type="button" data-mobile-nav-trigger aria-controls="mobile-client-navigation" aria-expanded="false" aria-label="Abrir menú" class="mobile-nav-trigger absolute top-[18px] right-0 grid place-items-center min-[1224px]:hidden"><span aria-hidden="true" class="space-y-[5px]"><span class="block h-0.5 w-6 bg-current"></span><span class="block h-0.5 w-6 bg-current"></span><span class="block h-0.5 w-6 bg-current"></span></span></button>
             <div id="client-account-menu" class="absolute top-[76px] right-0 z-[70] hidden w-[248px] overflow-hidden rounded-[16px] border border-[#e2e8eb] bg-white p-2 shadow-[0_18px_45px_rgba(7,19,27,.18)]">
                 <div class="border-b border-[#edf0f2] px-3 py-3"><span class="block truncate text-[13px] font-semibold text-[#132b3b]">{{ $client->name }}</span><span class="mt-0.5 block truncate text-[11px] text-[#758189]">{{ $client->email }}</span></div>
                 <form method="POST" action="{{ route('client.logout') }}" class="pt-2">@csrf<button class="flex h-10 w-full items-center gap-2 rounded-[10px] px-3 text-left text-[13px] font-semibold text-[#c44b56] transition hover:bg-[#fff1f2]"><svg class="size-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10 17l5-5-5-5m5 5H3m18 7V5a2 2 0 0 0-2-2h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Cerrar sesión</button></form>
             </div>
         </div>
     </header>
+    <button type="button" data-mobile-nav-overlay aria-label="Cerrar menú" class="mobile-nav-overlay" tabindex="-1"></button>
+    <aside id="mobile-client-navigation" data-mobile-nav class="mobile-nav-panel" aria-hidden="true" aria-label="Zona Clientes">
+        <div class="flex items-center justify-between border-b border-[#dedfe0] pb-5"><button type="button" data-private-public-link aria-label="Ir al sitio público"><img src="/storage/figma/header-footer/header-logo.png" alt="Fitinox" class="h-auto w-[190px] object-contain"></button><button type="button" data-mobile-nav-close aria-label="Cerrar menú" class="mobile-nav-trigger grid place-items-center text-[32px] font-light leading-none">&times;</button></div>
+        <div class="mt-5 border-b border-[#e7ecef] pb-4"><span class="block truncate text-[14px] font-semibold text-[#132b3b]">{{ $client->name }}</span><span class="mt-1 block truncate text-[12px] text-[#758189]">{{ $client->email }}</span></div>
+        <nav class="mt-3 flex flex-col" aria-label="Navegación de clientes">
+            <a href="{{ route('client.dashboard') }}" class="flex min-h-11 items-center border-b border-[#e7ecef] py-3 text-[15px] {{ request()->routeIs('client.dashboard') ? 'font-semibold text-[#1954b7]' : '' }}">Inicio</a>
+            <a href="{{ route('client.products') }}" class="flex min-h-11 items-center border-b border-[#e7ecef] py-3 text-[15px] {{ request()->routeIs('client.products') ? 'font-semibold text-[#1954b7]' : '' }}">Productos</a>
+            <a href="{{ route('client.cart') }}" class="flex min-h-11 items-center border-b border-[#e7ecef] py-3 text-[15px] {{ request()->routeIs('client.cart') ? 'font-semibold text-[#1954b7]' : '' }}">Carrito</a>
+            <a href="{{ route('client.price-list') }}" class="flex min-h-11 items-center border-b border-[#e7ecef] py-3 text-[15px] {{ request()->routeIs('client.price-list*') ? 'font-semibold text-[#1954b7]' : '' }}">Lista de precios</a>
+            <a href="{{ route('client.orders') }}" class="flex min-h-11 items-center border-b border-[#e7ecef] py-3 text-[15px] {{ request()->routeIs('client.orders*') ? 'font-semibold text-[#1954b7]' : '' }}">Histórico de pedidos</a>
+        </nav>
+        <div class="mt-6 grid gap-3"><button type="button" data-catalog-search-trigger class="flex min-h-11 items-center gap-3 rounded-[7px] border border-[#dedfe0] px-4 text-[14px]"><img src="/storage/figma/header-footer/search.svg" alt="" class="size-5">Buscar productos</button>@include('components.locale-menu', ['class' => 'flex min-h-11 items-center rounded-[7px] border border-[#dedfe0] px-4 text-[14px] text-fitinox'])<form method="POST" action="{{ route('client.logout') }}">@csrf<button class="flex min-h-11 w-full items-center justify-center rounded-[7px] bg-[#132b3b] px-4 text-[14px] font-medium text-white">Cerrar sesión</button></form></div>
+    </aside>
+    </div>
     @include('components.catalog-search', ['privateSearch' => true])
     @if(session('success'))<div role="status" aria-live="polite" class="fixed top-[116px] right-5 z-[60] w-[min(390px,calc(100vw-40px))] rounded-[18px] border border-white/70 bg-white/95 p-4 shadow-[0_20px_65px_rgba(7,19,27,.18)] backdrop-blur"><div class="flex items-start gap-3"><span class="grid size-10 shrink-0 place-items-center rounded-[13px] bg-[#e9f8f0] text-[#17845c]"><svg class="size-5" viewBox="0 0 24 24" fill="none"><path d="m5 12 4 4L19 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><p class="pt-1 text-[13px] leading-5 text-[#334851]">{{ session('success') }}</p></div></div>@endif
     <main>@yield('content')</main>
@@ -42,17 +57,15 @@
             <div class="lg:pt-[45px]">
                 <h3 class="text-[20px] font-semibold">Suscribite al Newsletter</h3>
                 <form action="{{ route('newsletter.subscribe') }}" method="POST" class="mt-[26px] flex h-[40px] w-[289px] items-center rounded-[4px] border border-[#dedfe0] px-3 text-[14px]">@csrf<input type="email" name="email" required placeholder="Email" aria-label="Email" class="grow bg-transparent outline-none placeholder:text-white"><button type="submit" aria-label="Suscribirme"><img src="/storage/figma/header-footer/arrow-right.svg" alt="" class="size-5"></button></form>
-                <h3 class="mt-[25px] text-[20px] font-semibold">Seguinos en</h3>
-                @php($socialLinks = ['instagram' => $settings['instagram_url'] ?? '', 'facebook' => $settings['facebook_url'] ?? '', 'linkedin' => $settings['linkedin_url'] ?? ''])
-                <div class="mt-5 flex gap-3">
-                    @foreach($socialLinks as $social => $url)
-                        @if($url)
+                @php($socialLinks = collect(['instagram' => $settings['instagram_url'] ?? null, 'facebook' => $settings['facebook_url'] ?? null, 'linkedin' => $settings['linkedin_url'] ?? null])->map(fn ($url) => is_string($url) ? trim($url) : '')->filter()->all())
+                @if(count($socialLinks))
+                    <h3 class="mt-[25px] text-[20px] font-semibold">Seguinos en</h3>
+                    <div class="mt-5 flex gap-3">
+                        @foreach($socialLinks as $social => $url)
                             <a href="{{ $url }}" target="_blank" rel="noreferrer" aria-label="{{ ucfirst($social) }}"><img src="/storage/figma/header-footer/{{ $social }}.svg" alt="" class="size-5"></a>
-                        @else
-                            <span title="Configurá {{ ucfirst($social) }} desde Administración" class="opacity-55"><img src="/storage/figma/header-footer/{{ $social }}.svg" alt="" class="size-5"></span>
-                        @endif
-                    @endforeach
-                </div>
+                        @endforeach
+                    </div>
+                @endif
             </div>
             <div class="relative lg:pt-[45px]">
                 <h3 class="text-[20px] font-semibold">Contacto</h3>
@@ -64,10 +77,10 @@
                 <img src="/storage/figma/header-footer/whatsapp.svg" class="absolute top-[326px] left-0 size-5" alt=""><a href="https://wa.me/{{ $whatsappNumber }}" target="_blank" rel="noreferrer" class="absolute top-[323px] left-[31px] text-[16px] leading-[24px]">{{ $settings['whatsapp'] ?? '54 9 11 4073-2016' }}</a>
             </div>
         </div>
-        <div class="relative h-[67px]"><div class="absolute inset-0 opacity-10" style="background:linear-gradient(0deg,rgba(0,0,0,.4),rgba(0,0,0,.4)),#152168"></div><div class="relative fitinox-content-1224 flex h-full items-center justify-between text-[14px]"><span>{{ $settings['copyright'] ?? '© Copyright 2025 Fitinox S.R.L. Todos los derechos reservados' }}</span><span>By <a data-no-translate href="https://osole.com.ar/" target="_blank" rel="noreferrer" class="font-bold">Osole</a></span></div></div>
+        <div data-footer-copyright class="relative h-[67px]"><div class="absolute inset-0 opacity-10" style="background:linear-gradient(0deg,rgba(0,0,0,.4),rgba(0,0,0,.4)),#152168"></div><div class="relative fitinox-content-1224 flex h-full items-center justify-between text-[14px]"><span>{{ $settings['copyright'] ?? '© Copyright 2025 Fitinox S.R.L. Todos los derechos reservados' }}</span><span>By <a data-no-translate href="https://osole.com.ar/" target="_blank" rel="noreferrer" class="font-bold">Osole</a></span></div></div>
     </footer>
     @if(($settings['whatsapp_enabled'] ?? '1') === '1')
-        <a href="https://wa.me/{{ $settings['whatsapp_number'] ?? '5491140732016' }}?text={{ rawurlencode($settings['whatsapp_message'] ?? 'Hola Fitinox, quisiera realizar una consulta.') }}" target="_blank" rel="noreferrer" aria-label="Consultar por WhatsApp" class="fixed {{ ($settings['whatsapp_position'] ?? 'right') === 'left' ? 'left-[35px]' : 'right-[35px]' }} bottom-[35px] z-[60] grid size-[64px] place-items-center rounded-full bg-[#19bd4b] shadow-[0_12px_35px_rgba(25,189,75,.35)] transition duration-200 hover:scale-105 hover:shadow-[0_16px_42px_rgba(25,189,75,.45)]"><img src="/storage/figma/header-footer/whatsapp.svg" class="size-8 brightness-0 invert" alt=""></a>
+        <a data-floating-whatsapp href="https://wa.me/{{ $settings['whatsapp_number'] ?? '5491140732016' }}?text={{ rawurlencode($settings['whatsapp_message'] ?? 'Hola Fitinox, quisiera realizar una consulta.') }}" target="_blank" rel="noreferrer" aria-label="Consultar por WhatsApp" class="floating-whatsapp-pulse fixed {{ ($settings['whatsapp_position'] ?? 'right') === 'left' ? 'left-4 min-[1224px]:left-[35px]' : 'right-4 min-[1224px]:right-[35px]' }} bottom-4 z-[60] grid size-14 place-items-center rounded-full bg-[#19bd4b] shadow-[0_12px_35px_rgba(25,189,75,.35)] transition duration-200 hover:shadow-[0_16px_42px_rgba(25,189,75,.45)] min-[1224px]:bottom-[35px] min-[1224px]:size-[64px]"><img src="/storage/figma/header-footer/whatsapp.svg" class="size-7 brightness-0 invert min-[1224px]:size-8" alt=""></a>
     @endif
     <dialog id="private-public-alert" aria-labelledby="private-public-alert-title" class="m-auto w-[min(390px,calc(100vw-32px))] overflow-hidden rounded-[24px] border border-white/80 bg-white p-0 text-[#132b3b] shadow-[0_28px_90px_rgba(7,19,27,.32)] backdrop:bg-[#132b3b]/45 backdrop:backdrop-blur-sm">
         <div class="p-6">

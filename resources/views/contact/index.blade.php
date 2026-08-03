@@ -2,12 +2,12 @@
 @section('title', $page->seo_title ?: 'Contacto | Fitinox')
 @section('meta_description', $page->seo_description ?: 'Contactate con el equipo de Fitinox.')
 @section('content')
-<section class="relative h-[301px] overflow-hidden">
+<section data-public-hero class="relative h-[240px] overflow-hidden min-[1224px]:h-[301px]">
     <img src="{{ Storage::url($page->hero_image ?: 'figma/contact/hero.png') }}" alt="" class="absolute inset-0 h-full w-full object-cover object-center opacity-80">
     <div class="absolute inset-0 bg-gradient-to-l from-[#1954b7] to-[#132b3b] mix-blend-multiply"></div>
-    <div data-hero-content class="relative mx-auto h-full w-[calc(100%-40px)] max-w-[1224px] text-white xl:w-full">
+    <div data-public-hero-content class="fitinox-content-1224 relative h-full text-white">
         <p class="pt-[24px] text-[12px] leading-[18px]"><a href="/" class="font-bold">Inicio</a> &gt; Contacto</p>
-        <h1 class="absolute top-[202px] left-0 w-[529px] text-[40px] leading-[48px] font-semibold">{{ $page->hero_title ?: 'Contacto' }}</h1>
+        <h1 class="absolute bottom-10 left-0 text-[32px] leading-[1.2] font-semibold sm:text-[36px] min-[1224px]:top-[202px] min-[1224px]:bottom-auto min-[1224px]:w-[529px] min-[1224px]:text-[40px]">{{ $page->hero_title ?: 'Contacto' }}</h1>
     </div>
 </section>
 
@@ -65,7 +65,7 @@
         <div class="relative h-[173px]"><p class="absolute top-[147px] left-0 text-[16px] leading-[24px] text-[#35363a]">*Datos obligatorios</p><button type="submit" class="absolute top-[137px] right-0 inline-flex h-[36px] w-[163px] items-center justify-center whitespace-nowrap rounded-[7px] bg-[#132b3b] px-5 text-[13px] font-medium tracking-[.39px] text-white">ENVIAR MENSAJE</button></div>
     </form>
 
-    <div data-reveal class="relative mt-[80px] h-[544px] overflow-hidden border border-[#dedfe0] bg-[#e7e7e7] xl:absolute xl:top-[547px] xl:left-0 xl:mt-0 xl:w-[1224px]" aria-label="Mapa interactivo de ubicación de Fitinox">
+    <div data-reveal class="relative mt-[64px] h-[500px] overflow-hidden rounded-[14px] border border-[#dedfe0] bg-[#e7e7e7] shadow-[0_18px_45px_rgba(19,43,59,.12)] sm:h-[544px] xl:absolute xl:top-[547px] xl:left-0 xl:mt-0 xl:w-[1224px] xl:rounded-none xl:shadow-none" aria-label="Mapa interactivo de ubicación de Fitinox">
         <div id="contact-map" class="h-full w-full grayscale" aria-label="Mapa de ubicación de Fitinox"></div>
     </div>
 </section>

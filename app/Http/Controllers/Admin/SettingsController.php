@@ -67,6 +67,8 @@ class SettingsController extends Controller
             'seo_keywords' => ['nullable', 'max:255'],
             'seo_og_image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'remove_seo_og_image' => ['nullable', 'boolean'],
+            'downloads_enabled' => ['required', 'boolean'],
+            'client_area_enabled' => ['required', 'boolean'],
             'whatsapp_enabled' => ['required', 'boolean'],
             'whatsapp_number' => ['required', 'regex:/^[0-9]{8,20}$/'],
             'whatsapp_message' => ['nullable', 'max:300'],
@@ -95,9 +97,11 @@ class SettingsController extends Controller
             Setting::updateOrCreate(['key' => $key], [
                 'group' => str_starts_with($key, 'seo_')
                     ? 'seo'
+                    : (in_array($key, ['downloads_enabled', 'client_area_enabled'], true)
+                        ? 'visibility'
                     : (str_starts_with($key, 'contact_')
                         ? 'contact'
-                        : (str_ends_with($key, '_url') ? 'social' : 'whatsapp')),
+                        : (str_ends_with($key, '_url') ? 'social' : 'whatsapp'))),
                 'value' => is_bool($value) ? ($value ? '1' : '0') : $value,
                 'type' => is_bool($value) ? 'boolean' : 'text',
             ]);

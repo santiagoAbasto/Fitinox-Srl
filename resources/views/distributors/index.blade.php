@@ -2,26 +2,26 @@
 @section('title', $page->seo_title ?: 'Distribuidores | Fitinox')
 @section('meta_description', $page->seo_description ?: 'Encontrá distribuidores oficiales de Fitinox en Argentina.')
 @section('content')
-<section class="relative h-[300px] overflow-hidden">
+<section data-public-hero class="relative h-[240px] overflow-hidden min-[1224px]:h-[300px]">
     <img src="{{ Storage::url($page->hero_image ?: 'figma/distributors/hero.png') }}" alt="" class="absolute inset-0 h-full w-full object-cover object-center">
     <div class="absolute inset-0 bg-gradient-to-l from-[#1954b7] to-[#132b3b] opacity-80 mix-blend-multiply"></div>
-    <div data-hero-content class="relative mx-auto h-full w-[calc(100%-40px)] max-w-[1224px] text-white xl:w-full">
+    <div data-public-hero-content class="fitinox-content-1224 relative h-full text-white">
         <p class="pt-[24px] text-[12px] leading-[18px]"><a href="/" class="font-bold">Inicio</a> &gt; Distribuidores</p>
-        <h1 class="absolute top-[202px] left-0 w-[529px] text-[40px] leading-[48px] font-semibold">{{ $page->hero_title ?: 'Distribuidores' }}</h1>
+        <h1 class="absolute bottom-10 left-0 text-[32px] leading-[1.2] font-semibold sm:text-[36px] min-[1224px]:top-[202px] min-[1224px]:bottom-auto min-[1224px]:w-[529px] min-[1224px]:text-[40px]">{{ $page->hero_title ?: 'Distribuidores' }}</h1>
     </div>
 </section>
 
-<section class="mx-auto w-[calc(100%-40px)] max-w-[1224px] py-[80px] lg:h-[950px] lg:py-0 lg:pt-[80px] xl:w-full">
-    <div class="grid gap-8 lg:grid-cols-[392px_809px] lg:gap-[24px]">
-        <div class="relative h-[776px] overflow-hidden pr-[19px]">
+<section class="fitinox-content-1224 py-12 sm:py-16 min-[1224px]:h-[950px] min-[1224px]:py-0 min-[1224px]:pt-[80px]">
+    <div class="grid gap-8 min-[1224px]:grid-cols-[392px_809px] min-[1224px]:gap-[24px]">
+        <div class="relative h-[520px] overflow-hidden min-[1224px]:h-[776px] min-[1224px]:pr-[19px]">
             <div class="flex items-center">
-                <label class="flex h-[44px] w-[345px] items-center border border-[#dedfe0] bg-white px-[10px]">
+                <label class="flex h-[44px] min-w-0 flex-1 items-center border border-[#dedfe0] bg-white px-[10px] min-[1224px]:w-[345px] min-[1224px]:flex-none">
                     <input id="distributor-search" type="search" value="Argentina" aria-label="Buscar distribuidores" class="w-full bg-transparent text-[16px] leading-5 text-[#35363a] outline-none">
                 </label>
                 <button id="distributor-search-button" type="button" aria-label="Buscar" class="ml-[17px] grid size-6 shrink-0 place-items-center"><img src="/storage/figma/distributors/search.svg" class="size-6" alt=""></button>
             </div>
 
-            <div id="distributor-list" class="mt-[23px] h-[643px] overflow-y-auto pr-[11px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div id="distributor-list" class="mt-[23px] h-[430px] overflow-y-auto pr-[11px] [scrollbar-width:none] min-[1224px]:h-[643px] [&::-webkit-scrollbar]:hidden">
                 @foreach($distributors as $index => $distributor)
                     <article data-distributor data-search="{{ mb_strtolower($distributor->country.' '.$distributor->name.' '.$distributor->address) }}" data-index="{{ $index }}" class="border-b border-[#dedfe0] px-[8px] pb-[19px] {{ $index ? 'pt-[19px]' : '' }}">
                         <button type="button" data-select-distributor="{{ $distributor->id }}" class="block w-full text-left">
@@ -42,7 +42,7 @@
             </div>
         </div>
 
-        <div id="distributor-map-shell" class="relative h-[776px]">
+        <div id="distributor-map-shell" class="relative h-[420px] sm:h-[560px] min-[1224px]:!h-[776px]">
             <div id="distributor-map" class="relative z-0 h-full overflow-hidden bg-[#e7e7e7]" aria-label="Mapa interactivo de distribuidores"></div>
             <div class="absolute top-[18px] right-[18px] z-[500] flex flex-col items-end">
                 <button id="use-my-location" type="button" class="inline-flex h-[42px] items-center gap-[8px] rounded-[7px] border border-[#dedfe0] bg-white px-[14px] text-[11px] font-semibold text-[#132b3b] shadow-[0_5px_20px_rgba(19,43,59,.16)] transition hover:border-[#1954b7]">

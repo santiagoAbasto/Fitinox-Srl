@@ -2,12 +2,12 @@
 @section('title', $page->seo_title ?: 'Solicitud de presupuesto | Fitinox')
 @section('meta_description', $page->seo_description ?: 'Solicitá un presupuesto personalizado de productos Fitinox.')
 @section('content')
-<section class="relative h-[300px] overflow-hidden">
+<section data-public-hero class="relative h-[240px] overflow-hidden min-[1224px]:h-[300px]">
     <img src="{{ Storage::url($page->hero_image ?: 'figma/quote/hero.png') }}" alt="" class="absolute inset-0 h-full w-full object-cover object-center">
     <div class="absolute inset-0 bg-gradient-to-l from-[#1954b7] to-[#132b3b] opacity-80 mix-blend-multiply"></div>
-    <div data-hero-content class="relative mx-auto h-full w-[calc(100%-40px)] max-w-[1224px] text-white xl:w-full">
+    <div data-public-hero-content class="fitinox-content-1224 relative h-full text-white">
         <p class="pt-[24px] text-[12px] leading-[18px]"><a href="/" class="font-bold">Inicio</a> &gt; Presupuesto</p>
-        <h1 class="absolute top-[202px] left-0 w-[529px] text-[40px] leading-[48px] font-semibold">{{ $page->hero_title ?: 'Solicitud de presupuesto' }}</h1>
+        <h1 class="absolute bottom-10 left-0 max-w-full text-[30px] leading-[1.2] font-semibold sm:text-[36px] min-[1224px]:top-[202px] min-[1224px]:bottom-auto min-[1224px]:w-[529px] min-[1224px]:text-[40px]">{{ $page->hero_title ?: 'Solicitud de presupuesto' }}</h1>
     </div>
 </section>
 
@@ -23,7 +23,7 @@
 </div>
 @endif
 
-<section class="mx-auto min-h-[1010px] w-[calc(100%-40px)] max-w-[1016px] pt-[80px] pb-[80px] xl:w-full">
+<section class="mx-auto min-h-[1010px] w-[calc(100%-32px)] max-w-[1016px] py-12 sm:w-[calc(100%-40px)] sm:py-16 min-[1224px]:w-full min-[1224px]:py-[80px]">
     <h2 class="ml-px text-[32px] leading-[38px] font-medium text-[#132b3b]">Productos</h2>
     <div class="mx-px mt-[11px] min-h-[281px] border-t border-[#dedfe0]">
         @forelse($items as $item)
@@ -49,9 +49,9 @@
             </form>
         </article>
         @empty
-        <div class="flex min-h-[140px] items-center justify-between border-b border-[#dedfe0]">
-            <div><p class="text-[16px] font-medium text-[#132b3b]">Todavía no agregaste productos.</p><p class="mt-2 text-[13px] text-[#6d777c]">Elegí una especificación técnica y presioná “Consultar”.</p></div>
-            <a href="/productos" class="inline-flex h-[36px] items-center justify-center rounded-[7px] border border-[#132b3b] px-5 text-[13px] font-medium text-[#132b3b]">VER PRODUCTOS</a>
+        <div class="flex min-h-[200px] flex-col items-start justify-center gap-6 rounded-[14px] border border-[#dbe3e7] bg-[#f8fafb] p-6 sm:p-8 min-[1224px]:min-h-[140px] min-[1224px]:flex-row min-[1224px]:items-center min-[1224px]:justify-between min-[1224px]:rounded-none min-[1224px]:border-x-0 min-[1224px]:border-t-0 min-[1224px]:bg-transparent min-[1224px]:p-0">
+            <div><p class="text-[18px] font-semibold text-[#132b3b] min-[1224px]:text-[16px] min-[1224px]:font-medium">Todavía no agregaste productos.</p><p class="mt-2 max-w-[440px] text-[14px] leading-6 text-[#6d777c] min-[1224px]:text-[13px] min-[1224px]:leading-normal">Elegí una especificación técnica y presioná “Consultar”.</p></div>
+            <a href="/productos" class="inline-flex min-h-12 w-full items-center justify-center rounded-[9px] border border-[#132b3b] bg-white px-6 text-[13px] font-semibold tracking-[.03em] text-[#132b3b] min-[1224px]:h-[36px] min-[1224px]:min-h-0 min-[1224px]:w-auto min-[1224px]:rounded-[7px]">VER PRODUCTOS</a>
         </div>
         @endforelse
     </div>

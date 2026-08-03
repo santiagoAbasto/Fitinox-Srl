@@ -108,6 +108,68 @@ const uiText = isEnglish ? {
     locationError: 'No pudimos detectar tu ubicación. Revisá el GPS o intentá nuevamente.',
 };
 
+document.querySelectorAll('[data-mobile-nav-root]').forEach((root) => {
+    if (root.dataset.mobileNavInitialized === 'true') return;
+    root.dataset.mobileNavInitialized = 'true';
+
+    const trigger = root.querySelector('[data-mobile-nav-trigger]');
+    const panel = root.querySelector('[data-mobile-nav]');
+    const overlay = root.querySelector('[data-mobile-nav-overlay]');
+    const closeButton = root.querySelector('[data-mobile-nav-close]');
+    const desktopMedia = window.matchMedia('(min-width: 1224px)');
+    const menuLabels = isEnglish ? { open: 'Open menu', close: 'Close menu' } : { open: 'Abrir menú', close: 'Cerrar menú' };
+    let returnFocus = null;
+
+    if (!trigger || !panel || !overlay || !closeButton) return;
+
+    const focusableElements = () => [...panel.querySelectorAll('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+        .filter((element) => !element.hasAttribute('hidden'));
+    const setOpen = (open, restoreFocus = true) => {
+        root.classList.toggle('is-open', open);
+        document.body.classList.toggle('mobile-nav-open', open);
+        trigger.setAttribute('aria-expanded', String(open));
+        trigger.setAttribute('aria-label', open ? menuLabels.close : menuLabels.open);
+        panel.setAttribute('aria-hidden', String(!open));
+
+        if (open) {
+            returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : trigger;
+            window.requestAnimationFrame(() => closeButton.focus());
+        } else if (restoreFocus && returnFocus instanceof HTMLElement) {
+            returnFocus.focus();
+        }
+    };
+
+    trigger.addEventListener('click', () => setOpen(!root.classList.contains('is-open')));
+    closeButton.addEventListener('click', () => setOpen(false));
+    overlay.addEventListener('click', () => setOpen(false));
+    panel.querySelectorAll('a[href], [data-catalog-search-trigger], [data-client-login-trigger]').forEach((element) => {
+        element.addEventListener('click', () => setOpen(false));
+    });
+    document.addEventListener('keydown', (event) => {
+        if (!root.classList.contains('is-open')) return;
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            setOpen(false);
+            return;
+        }
+        if (event.key !== 'Tab') return;
+        const focusable = focusableElements();
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        if (!first || !last) return;
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    });
+    desktopMedia.addEventListener('change', (event) => {
+        if (event.matches) setOpen(false, false);
+    });
+});
+
 if (!reduceMotion) {
     const header = document.querySelector('[data-public-header]');
     const heroContents = document.querySelectorAll('[data-hero-content]');
@@ -568,4 +630,32 @@ if (distributorMapElement && window.FitinoxDistributorLocations) {
 
     window.addEventListener('resize', () => map.invalidateSize(), { passive: true });
     window.setTimeout(() => map.invalidateSize(), 120);
+}
+
+const floatingWhatsapp = document.querySelector('[data-floating-whatsapp]');
+const copyrightBoundary = document.querySelector('[data-footer-copyright]');
+
+if (floatingWhatsapp && copyrightBoundary) {
+    let currentLift = 0;
+    let frameRequested = false;
+
+    const positionFloatingWhatsapp = () => {
+        frameRequested = false;
+        const buttonRect = floatingWhatsapp.getBoundingClientRect();
+        const boundaryTop = copyrightBoundary.getBoundingClientRect().top;
+        const baseBottom = buttonRect.bottom - currentLift;
+        const safetyGap = window.innerWidth >= 1224 ? 20 : 16;
+        currentLift = Math.min(0, boundaryTop - safetyGap - baseBottom);
+        floatingWhatsapp.style.transform = `translate3d(0, ${currentLift}px, 0)`;
+    };
+
+    const requestWhatsappPosition = () => {
+        if (frameRequested) return;
+        frameRequested = true;
+        window.requestAnimationFrame(positionFloatingWhatsapp);
+    };
+
+    window.addEventListener('scroll', requestWhatsappPosition, { passive: true });
+    window.addEventListener('resize', requestWhatsappPosition, { passive: true });
+    positionFloatingWhatsapp();
 }
