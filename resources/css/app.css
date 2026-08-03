@@ -45,6 +45,17 @@
         color: #132b3b;
         border-radius: 7px;
     }
+    .public-toast {
+        animation: public-toast-enter 240ms cubic-bezier(.22, 1, .36, 1) both;
+        transition: opacity 180ms ease, transform 180ms cubic-bezier(.4, 0, 1, 1);
+    }
+    .public-toast.is-leaving {
+        opacity: 0;
+        transform: translateY(-8px) scale(.985);
+    }
+    .public-toast-progress {
+        animation: public-toast-progress 6.5s linear forwards;
+    }
     .mobile-nav-trigger:focus-visible,
     .mobile-nav-panel a:focus-visible,
     .mobile-nav-panel button:focus-visible {
@@ -480,6 +491,16 @@
         box-shadow: none !important;
         transform: none !important;
     }
+}
+
+@keyframes public-toast-enter {
+    from { opacity: 0; transform: translateY(-12px) scale(.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes public-toast-progress {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
 }
 
 @keyframes locale-header-out {

@@ -46,6 +46,26 @@
         </div>
     </div>
 </header>
+@if(session('newsletter_notice'))
+    @php($newsletterNotice = session('newsletter_notice'))
+    <div data-newsletter-toast role="status" aria-live="polite" aria-atomic="true" class="public-toast fixed top-[96px] right-4 z-[90] w-[min(400px,calc(100vw-32px))] overflow-hidden rounded-[18px] border border-white/80 bg-white/95 shadow-[0_24px_70px_rgba(7,31,46,.22)] backdrop-blur-xl min-[1224px]:top-[120px] min-[1224px]:right-6">
+        <div class="flex items-start gap-3 p-4 sm:p-5">
+            <span class="grid size-11 shrink-0 place-items-center rounded-[14px] bg-[#e8f8f0] text-[#17845c]" aria-hidden="true"><svg class="size-6" viewBox="0 0 24 24" fill="none"><path d="m5 12 4 4L19 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <div class="min-w-0 grow pt-0.5"><p class="text-[13px] font-semibold text-[#132b3b]">{{ $newsletterNotice['title'] }}</p><p class="mt-1 text-[11px] leading-[17px] text-[#65747c] sm:text-[12px]">{{ $newsletterNotice['message'] }}</p></div>
+            <button type="button" data-newsletter-toast-close class="grid size-8 shrink-0 place-items-center rounded-full text-xl leading-none text-[#8b979d] transition hover:bg-[#edf3f7] hover:text-[#132b3b]" aria-label="Cerrar notificación">×</button>
+        </div>
+        <div class="h-[3px] bg-[#e8edef]"><div class="public-toast-progress h-full origin-left bg-gradient-to-r from-[#34c98b] to-[#1954b7]"></div></div>
+    </div>
+    <script>
+    (() => {
+        const toast = document.querySelector('[data-newsletter-toast]');
+        if (!toast) return;
+        const close = () => { toast.classList.add('is-leaving'); window.setTimeout(() => toast.remove(), 180); };
+        toast.querySelector('[data-newsletter-toast-close]')?.addEventListener('click', close);
+        window.setTimeout(close, 6500);
+    })();
+    </script>
+@endif
 <button type="button" data-mobile-nav-overlay aria-label="{{ app()->getLocale() === 'en' ? 'Close menu' : 'Cerrar menú' }}" class="mobile-nav-overlay" tabindex="-1"></button>
 <aside id="mobile-public-navigation" data-mobile-nav class="mobile-nav-panel" aria-hidden="true" aria-label="{{ app()->getLocale() === 'en' ? 'Main navigation' : 'Navegación principal' }}">
     <div class="flex items-center justify-between border-b border-[#dedfe0] pb-5">
@@ -72,7 +92,7 @@
         <div class="xl:pt-[45px]"><h3 class="text-[20px] font-semibold">Secciones</h3><div class="mt-[25px] grid w-[288px] grid-cols-[168px_120px] text-[16px] leading-[2.3]"><div><a class="block" href="/nosotros">Nosotros</a><a class="block" href="/productos">Productos</a>@if($downloadsEnabled)<a class="block" href="/descargas">Descargas</a>@endif<a class="block" href="/calidad">Calidad</a></div><div><a class="block" href="/videos">Videos</a><a class="block" href="/distribuidores">Distribuidores</a><a class="block" href="/presupuesto">Presupuesto</a><a class="block" href="/contacto">Contacto</a></div></div></div>
         <div class="xl:pt-[45px]">
             <h3 class="text-[20px] font-semibold">Suscribite al Newsletter</h3>
-            <form action="{{ route('newsletter.subscribe') }}" method="POST" class="mt-[26px] flex h-[44px] w-full max-w-[289px] items-center rounded-[4px] border border-[#dedfe0] px-3 text-[14px]">@csrf<input type="email" name="email" required aria-label="Email" placeholder="Email" class="min-w-0 grow bg-transparent outline-none placeholder:text-white"><button type="submit" aria-label="Suscribirme" class="grid size-11 shrink-0 place-items-center"><img src="/storage/figma/header-footer/arrow-right.svg" alt="" class="size-5"></button></form>
+            <form action="{{ route('newsletter.subscribe') }}" method="POST" class="mt-[26px] w-full max-w-[289px]">@csrf<div class="flex h-[44px] items-center rounded-[4px] border {{ $errors->newsletter->has('email') ? 'border-[#ff9a9a]' : 'border-[#dedfe0]' }} px-3 text-[14px]"><input type="email" name="email" value="{{ old('email') }}" required autocomplete="email" aria-label="Email" @if($errors->newsletter->has('email')) aria-invalid="true" aria-describedby="newsletter-email-error" @endif placeholder="Email" class="min-w-0 grow bg-transparent outline-none placeholder:text-white"><button type="submit" aria-label="Suscribirme" class="grid size-11 shrink-0 place-items-center"><img src="/storage/figma/header-footer/arrow-right.svg" alt="" class="size-5"></button></div>@error('email', 'newsletter')<p id="newsletter-email-error" class="mt-2 text-[11px] leading-4 text-[#ffd2d2]">Ingresá un correo electrónico válido.</p>@enderror</form>
             @php($socialLinks = collect(['instagram' => $settings['instagram_url'] ?? null, 'facebook' => $settings['facebook_url'] ?? null, 'linkedin' => $settings['linkedin_url'] ?? null])->map(fn ($url) => is_string($url) ? trim($url) : '')->filter()->all())
             @if(count($socialLinks))
                 <h3 class="mt-[25px] text-[20px] font-semibold">Seguinos en</h3>
