@@ -18,7 +18,7 @@ class AnalyticsController extends Controller
         $days = min(365, max(1, (int)$request->integer('days', 30))); $from = now()->subDays($days-1)->startOfDay();
         $payload = Cache::remember('analytics.dashboard.'.$days, 60, fn()=> $this->payload($from));
         return Inertia::render('Analytics/Index', ['analytics'=>$payload,'filters'=>['days'=>$days],'configured'=>[
-            'posthog'=>(bool)config('analytics.posthog.key'),'maxmind'=>is_readable((string)config('analytics.maxmind_database')),'cloudflare'=>(bool)env('CLOUDFLARE_API_TOKEN'),
+            'posthog'=>(bool)config('analytics.posthog.key'),'maxmind'=>is_readable((string)config('analytics.maxmind_database')),'cloudflare'=>(bool)config('services.cloudflare.api_token'),
         ]]);
     }
 

@@ -2,6 +2,10 @@
 
 return [
     'turnstile' => ['site_key'=>env('TURNSTILE_SITE_KEY'),'secret'=>env('TURNSTILE_SECRET_KEY'),'hostname'=>env('TURNSTILE_HOSTNAME')],
+    'cloudflare' => [
+        'api_token' => env('CLOUDFLARE_API_TOKEN'),
+        'zone_id' => env('CLOUDFLARE_ZONE_ID'),
+    ],
 
     /*
     |--------------------------------------------------------------------------
