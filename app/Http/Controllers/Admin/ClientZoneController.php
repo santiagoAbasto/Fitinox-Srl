@@ -21,8 +21,8 @@ class ClientZoneController extends Controller
     public function index(Request $request)
     {
         return Inertia::render('ClientZone/Index', [
-            'clients' => User::query()->where('role', 'client')->latest()->get(['id', 'name', 'email', 'company', 'phone', 'tax_id', 'is_active', 'approval_status', 'account_source', 'deactivation_source', 'created_at']),
-            'variants' => ProductVariant::query()->with('product.category')->where('is_active', true)->orderBy('code')->paginate(25, ['id', 'product_id', 'code', 'tube', 'thread', 'quality', 'list_price', 'discount_percent', 'final_price'], 'variants_page')->withQueryString(),
+            'clients' => User::query()->where('role', 'client')->latest()->get(['id', 'name', 'email', 'company', 'phone', 'tax_id', 'discount_percent', 'is_active', 'approval_status', 'account_source', 'deactivation_source', 'created_at']),
+            'variants' => ProductVariant::query()->with('product.category')->where('is_active', true)->orderBy('code')->paginate(25, ['id', 'product_id', 'code', 'tube', 'thread', 'quality', 'list_price'], 'variants_page')->withQueryString(),
             'orders' => ClientOrder::query()->with(['user:id,name,email,company', 'items'])->latest()->take(60)->get(),
             'priceLists' => ClientPriceList::query()->orderBy('sort_order')->orderByDesc('id')->get(),
         ]);
@@ -37,6 +37,7 @@ class ClientZoneController extends Controller
             'company' => ['nullable', 'string', 'max:150'],
             'phone' => ['nullable', 'string', 'max:50'],
             'tax_id' => ['nullable', 'string', 'max:40'],
+            'discount_percent' => ['required', 'numeric', 'min:0', 'max:100'],
             'password' => ['nullable', 'string', 'min:8', 'max:100'],
             'approval_status' => ['required', Rule::in(['pending', 'approved', 'rejected'])],
             'send_credentials' => ['nullable', 'boolean'],

@@ -1,9 +1,69 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { CheckCircle2, FileSpreadsheet, FolderTree, Pencil, Search, Trash2, UploadCloud } from 'lucide-react';
+import { useState } from 'react';
+import { CheckCircle2, Download, FileImage, FileSpreadsheet, Film, FolderTree, Pencil, Search, Trash2, UploadCloud } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import AdminLayout from '../../Components/AdminLayout';
 
 const input = 'w-full rounded-md border border-gray-200 px-3 py-2 text-sm outline-none focus:border-fitinox';
+
+type MediaKind = 'images' | 'videos';
+type MediaResult = { processed:number; matched:number; unmatched:number; files:Array<{name:string;status:string}> };
+
+function MediaBatchUploader({ kind }: { kind: MediaKind }) {
+    const isImage = kind === 'images';
+    const [files, setFiles] = useState<File[]>([]);
+    const [running, setRunning] = useState(false);
+    const [completed, setCompleted] = useState(0);
+    const [result, setResult] = useState<MediaResult|null>(null);
+    const [error, setError] = useState('');
+
+    const run = async () => {
+        if (!files.length || running) return;
+        setRunning(true); setCompleted(0); setError(''); setResult({ processed: 0, matched: 0, unmatched: 0, files: [] });
+        const batches: File[][] = [];
+        const maxBatchBytes = 75 * 1024 * 1024;
+        let batch: File[] = []; let bytes = 0;
+        for (const file of files) {
+            if (batch.length && (batch.length === 20 || bytes + file.size > maxBatchBytes)) {
+                batches.push(batch); batch = []; bytes = 0;
+            }
+            batch.push(file); bytes += file.size;
+        }
+        if (batch.length) batches.push(batch);
+
+        const total: MediaResult = { processed: 0, matched: 0, unmatched: 0, files: [] };
+        try {
+            for (const group of batches) {
+                const body = new FormData();
+                group.forEach(file => body.append('files[]', file));
+                const response = await fetch(`/admin/products/import/media/${kind}`, {
+                    method: 'POST', body, headers: {
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+                    },
+                });
+                const payload = await response.json();
+                if (!response.ok) throw new Error(payload.message || Object.values(payload.errors || {}).flat().join(' ') || 'No se pudo procesar el bloque.');
+                total.processed += payload.processed; total.matched += payload.matched; total.unmatched += payload.unmatched;
+                total.files.push(...payload.files); setCompleted(value => value + group.length); setResult({ ...total, files: [...total.files] });
+            }
+            router.reload({ only: ['products'], preserveScroll: true });
+        } catch (exception:any) {
+            setError(exception.message || 'La carga se interrumpió. Podés volver a ejecutarla.');
+        } finally { setRunning(false); }
+    };
+
+    const Icon = isImage ? FileImage : Film;
+    const unmatched = result?.files.filter(file => file.status === 'unmatched') || [];
+    return <div className="min-w-0 p-6">
+        <div className="mb-4 flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-lg bg-[#edf3f7] text-[#1954b7]"><Icon size={19}/></span><div><h3 className="text-[14px] font-semibold text-[#132b3b]">{isImage?'Fotos de productos':'Videos de productos'}</h3><p className="mt-1 max-w-[62ch] text-[11px] leading-5 text-[#65747c]">Seleccioná todos los archivos juntos. El sistema los envía automáticamente en bloques de hasta 20 y relaciona el nombre ignorando la extensión.</p></div></div>
+        <label className="flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border border-dashed border-[#b8c7cf] bg-[#f8fafb] px-4 transition hover:border-[#1954b7] focus-within:border-[#1954b7]"><UploadCloud size={19} className="shrink-0 text-[#1954b7]"/><span className="min-w-0 grow truncate text-[11px] text-[#52616a]">{files.length ? `${files.length} archivo${files.length===1?'':'s'} seleccionado${files.length===1?'':'s'}` : `Seleccionar ${isImage?'fotos JPG, PNG o WebP':'videos MP4, WebM o MOV'}`}</span><input type="file" multiple accept={isImage?'image/jpeg,image/png,image/webp':'video/mp4,video/webm,video/quicktime'} className="sr-only" onChange={event=>{setFiles(Array.from(event.target.files||[]));setResult(null);setCompleted(0);setError('')}}/></label>
+        {running && <div className="mt-4" aria-live="polite"><div className="mb-2 flex justify-between text-[10px] font-semibold text-[#52616a]"><span>Procesando por bloques…</span><span>{completed} / {files.length}</span></div><div className="h-2 overflow-hidden rounded-full bg-[#e7edf0]"><div className="h-full bg-[#1954b7] transition-[width] duration-200" style={{width:`${files.length ? (completed/files.length)*100 : 0}%`}}/></div></div>}
+        {result && !running && <div className="mt-4 rounded-xl bg-[#f3f8f5] px-4 py-3 text-[11px] text-[#315e4b]" aria-live="polite"><strong>{result.matched} relacionados</strong> · {result.unmatched} sin coincidencia{unmatched.length>0&&<p className="mt-2 break-words text-[#8c4c24]">Sin match: {unmatched.slice(0,8).map(file=>file.name).join(', ')}{unmatched.length>8?'…':''}</p>}</div>}
+        {error && <p className="mt-3 text-[11px] text-red-700" role="alert">{error}</p>}
+        <button type="button" onClick={run} disabled={!files.length||running} className="mt-4 min-h-11 w-full rounded-xl bg-[#132b3b] px-5 text-[11px] font-semibold text-white transition hover:bg-[#1954b7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1954b7] disabled:cursor-not-allowed disabled:opacity-40">{running?'PROCESANDO…':`SUBIR ${isImage?'FOTOS':'VIDEOS'}`}</button>
+    </div>;
+}
 
 export default function Index({ products, categories, filters, nextOrder }: { products: any, categories: any[], filters: any, nextOrder: string }) {
     const report = (usePage().props as any).flash?.import_report;
@@ -11,12 +71,16 @@ export default function Index({ products, categories, filters, nextOrder }: { pr
     const importForm = useForm<{file: File|null}>({ file: null });
     return <AdminLayout title="Productos"><Head title="Productos | Fitinox"/>
         <section id="importar" className="mb-7 scroll-mt-28 overflow-hidden rounded-2xl border border-[#dfe5e8] bg-white shadow-[0_10px_35px_rgba(19,43,59,.05)]">
-            <div className="flex items-center gap-4 border-b border-[#edf0f2] px-6 py-5"><span className="grid size-11 place-items-center rounded-xl bg-[#edf3f7] text-[#1954b7]"><FileSpreadsheet size={20}/></span><div><h2 className="text-[15px] font-semibold text-[#132b3b]">Importación masiva</h2><p className="mt-1 text-[11px] text-[#758189]">Excel o CSV con código, detalle, tubo, rosca, calidad, precios, descuento y stock.</p></div></div>
+            <div className="flex flex-wrap items-center gap-4 border-b border-[#edf0f2] px-6 py-5"><span className="grid size-11 place-items-center rounded-xl bg-[#edf3f7] text-[#1954b7]"><FileSpreadsheet size={20}/></span><div className="min-w-0 grow"><h2 className="text-[15px] font-semibold text-[#132b3b]">Importación masiva</h2><p className="mt-1 text-[11px] text-[#758189]">Descargá el Excel con los datos actuales, modificalo y volvé a importarlo.</p></div><a href="/admin/products/import/template" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#1954b7] px-4 text-[11px] font-semibold text-[#1954b7] transition hover:bg-[#edf3f7]"><Download size={16}/> DESCARGAR PLANTILLA ACTUAL</a></div>
             <form onSubmit={e=>{e.preventDefault();importForm.post('/admin/products/import',{forceFormData:true})}} className="flex flex-col gap-4 p-6 md:flex-row md:items-center">
                 <label className="flex min-h-20 grow cursor-pointer items-center gap-4 rounded-xl border border-dashed border-[#b8c7cf] bg-[#f8fafb] px-5 transition hover:border-[#1954b7] hover:bg-[#f3f7ff]"><UploadCloud size={22} className="text-[#1954b7]"/><span className="grow text-[12px] text-[#52616a]">{importForm.data.file?.name || 'Seleccionar archivo .xlsx o .csv'}</span><input type="file" accept=".xlsx,.csv" className="hidden" onChange={e=>importForm.setData('file',e.target.files?.[0]||null)}/></label>
                 <button disabled={!importForm.data.file || importForm.processing} className="min-h-12 rounded-xl bg-[#132b3b] px-6 text-[12px] font-semibold text-white disabled:opacity-40">{importForm.processing?'Importando…':'IMPORTAR PRODUCTOS'}</button>
             </form>
             {importForm.errors.file && <p className="px-6 pb-5 text-[12px] text-red-600">{importForm.errors.file}</p>}
+        </section>
+        <section className="mb-7 overflow-hidden rounded-2xl border border-[#dfe5e8] bg-white">
+            <header className="border-b border-[#edf0f2] px-6 py-5"><h2 className="text-[15px] font-semibold text-[#132b3b]">Archivos multimedia masivos</h2><p className="mt-1 text-[11px] text-[#65747c]">Primero importá el Excel. Después cargá fotos y videos: el nombre debe coincidir con las columnas Foto y Video; la extensión puede ser diferente.</p></header>
+            <div className="divide-y divide-[#edf0f2] lg:grid lg:grid-cols-2 lg:divide-x lg:divide-y-0"><MediaBatchUploader kind="images"/><MediaBatchUploader kind="videos"/></div>
         </section>
         {report && <section className="mb-7 overflow-hidden rounded-2xl border border-[#cce9dc] bg-white shadow-[0_12px_36px_rgba(18,104,75,.08)]">
             <header className="flex flex-wrap items-center gap-4 border-b border-[#e5f2ec] bg-[#f1faf6] px-6 py-5"><span className="grid size-11 place-items-center rounded-xl bg-white text-[#21845f] shadow-sm"><CheckCircle2 size={21}/></span><div className="min-w-0 grow"><h2 className="text-[15px] font-semibold text-[#173c30]">Informe de importación</h2><p className="mt-1 text-[10px] text-[#698078]">{report.file} · {report.processed} códigos únicos · {report.duplicates || 0} duplicados resueltos · {report.inferred_details || 0} familias inferidas</p></div><span className="rounded-full bg-white px-4 py-2 text-[10px] font-semibold text-[#21845f]">{report.products_created} productos nuevos</span></header>

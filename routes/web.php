@@ -84,7 +84,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::resource('pages', PageController::class)->only(['index', 'edit', 'update']);
     Route::resource('categories', CategoryController::class)->except(['create', 'show']);
     Route::resource('products', AdminProductController::class)->except(['create', 'show'])->middleware('admin.level:admin');
+    Route::get('/products/import/template', [AdminProductController::class, 'downloadTemplate'])->middleware('admin.level:admin')->name('products.import.template');
     Route::post('/products/import', [AdminProductController::class, 'import'])->middleware(['admin.level:admin', 'throttle:upload'])->name('products.import');
+    Route::post('/products/import/media/{type}', [AdminProductController::class, 'importMedia'])->middleware(['admin.level:admin', 'throttle:upload'])->name('products.import.media');
     Route::put('/products/{product}/related', [AdminProductController::class, 'syncRelated'])->middleware('admin.level:admin')->name('products.related.sync');
     Route::post('/products/{product}/variants', [AdminProductController::class, 'storeVariant'])->middleware('admin.level:admin')->name('products.variants.store');
     Route::put('/products/{product}/variants/{variant}', [AdminProductController::class, 'updateVariant'])->middleware('admin.level:admin')->name('products.variants.update');

@@ -63,8 +63,8 @@
                         </td>
                         <td class="border-b border-[#d8dcdd] px-[17px] py-0 whitespace-nowrap">{{ $variant->product->name }}</td>
                         <td class="border-b border-[#d8dcdd] px-[17px] py-0 text-center whitespace-nowrap">USD {{ number_format((float) ($variant->list_price ?? 0), 2, ',', '.') }}</td>
-                        <td class="border-b border-[#d8dcdd] px-[17px] py-0 text-center whitespace-nowrap">{{ $variant->discount_percent ? '-'.rtrim(rtrim((string) $variant->discount_percent, '0'), '.').'%' : '—' }}</td>
-                        <td class="border-b border-[#d8dcdd] px-[17px] py-0 text-center whitespace-nowrap">USD {{ number_format((float) ($variant->final_price ?? $variant->list_price ?? 0), 2, ',', '.') }}</td>
+                        <td class="border-b border-[#d8dcdd] px-[17px] py-0 text-center whitespace-nowrap">{{ $client->discount_percent ? '-'.rtrim(rtrim((string) $client->discount_percent, '0'), '.').'%' : '—' }}</td>
+                        <td class="border-b border-[#d8dcdd] px-[17px] py-0 text-center whitespace-nowrap">USD {{ number_format(round((float) ($variant->list_price ?? 0) * (1 - ((float) $client->discount_percent / 100)), 2), 2, ',', '.') }}</td>
                         <td class="border-b border-[#d8dcdd] px-[17px] py-0 text-center font-bold whitespace-nowrap">{{ $variant->physical_stock ?? 0 }}</td>
                         <td class="border-b border-[#d8dcdd] px-[17px] py-0 text-center whitespace-nowrap">{{ $variant->transit_stock ? $variant->transit_stock : '—' }}</td>
                         <td class="align-middle border-b border-[#d8dcdd] py-0 pr-[7px] leading-none">

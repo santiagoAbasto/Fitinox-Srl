@@ -7,6 +7,8 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\ProductSpreadsheetImporter;
+use App\Services\ProductSpreadsheetExporter;
+use App\Services\ProductMediaBatchImporter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Support\OrderCode;
@@ -121,6 +123,33 @@ class ProductController extends Controller
         return back()->with('success', $summary)->with('import_report', $report);
     }
 
+    public function downloadTemplate(ProductSpreadsheetExporter $exporter)
+    {
+        $path = $exporter->export();
+
+        return response()->download(
+            $path,
+            'Productos_FITINOX_'.now()->format('Y-m-d').'.xlsx',
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+        )->deleteFileAfterSend(true);
+    }
+
+    public function importMedia(Request $request, string $type, ProductMediaBatchImporter $importer)
+    {
+        abort_unless(in_array($type, ['images', 'videos'], true), 404);
+
+        $fileRules = $type === 'images'
+            ? ['required', 'file', new SecureUpload(true), 'mimes:jpg,jpeg,png,webp', 'max:5120']
+            : ['required', 'file', new SecureUpload(), 'mimes:mp4,webm,mov', 'max:102400'];
+
+        $data = $request->validate([
+            'files' => ['required', 'array', 'min:1', 'max:20'],
+            'files.*' => $fileRules,
+        ]);
+
+        return response()->json($importer->import($data['files'], $type));
+    }
+
     public function storeVariant(Request $request, Product $product)
     {
         $product->variants()->create($this->validatedVariant($request));
@@ -190,19 +219,22 @@ class ProductController extends Controller
 
     private function validatedVariant(Request $request, ?ProductVariant $variant = null): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'code' => ['required', 'max:120', Rule::unique('product_variants', 'code')->ignore($variant?->id)],
             'detail' => ['nullable', 'max:180'],
             'tube' => ['nullable', 'max:80'],
             'thread' => ['nullable', 'max:80'],
             'quality' => ['nullable', 'max:100'],
             'list_price' => ['nullable', 'numeric', 'min:0'],
-            'discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'final_price' => ['nullable', 'numeric', 'min:0'],
             'physical_stock' => ['nullable', 'integer', 'min:0'],
             'transit_stock' => ['nullable', 'integer', 'min:0'],
             'sort_order' => ['required', 'integer', 'min:0'],
             'is_active' => ['required', 'boolean'],
         ]);
+
+        $data['discount_percent'] = 0;
+        $data['final_price'] = $data['list_price'];
+
+        return $data;
     }
 }

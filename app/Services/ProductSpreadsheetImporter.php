@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
 use App\Support\OrderCode;
+use DOMDocument;
+use DOMElement;
+use DOMXPath;
 use ZipArchive;
 
 class ProductSpreadsheetImporter
@@ -33,7 +36,7 @@ class ProductSpreadsheetImporter
                 'products_created' => 0, 'duplicates' => 0, 'inferred_details' => 0,
                 'changes' => [], 'errors' => [],
             ];
-            $category = Category::firstOrCreate(
+            $defaultCategory = Category::firstOrCreate(
                 ['slug' => 'accesorios-para-tubos'],
                 ['name' => 'Accesorios para tubos', 'is_active' => true, 'sort_order' => 'A']
             );
@@ -64,6 +67,7 @@ class ProductSpreadsheetImporter
                     $detail = $this->inferredDetail($code);
                     $report['inferred_details']++;
                 }
+                $category = $this->resolveCategory($data, $defaultCategory);
                 $product = Product::where('slug', Str::slug($detail))->first();
                 if (!$product) {
                     $nextProductOrder = OrderCode::next($nextProductOrder);
@@ -78,6 +82,29 @@ class ProductSpreadsheetImporter
                     $report['products_created']++;
                 }
 
+                $productAttributes = ['category_id' => $category->id];
+                if ($photo = $this->nullableString($data['foto'] ?? null)) {
+                    $productAttributes['photo_import_key'] = pathinfo(basename(str_replace('\\', '/', $photo)), PATHINFO_FILENAME);
+                }
+                if ($video = $this->nullableString($data['video'] ?? null)) {
+                    if ($this->isYouTubeUrl($video)) {
+                        $productAttributes += [
+                            'video_type' => 'youtube',
+                            'youtube_url' => $video,
+                            'video_path' => null,
+                            'video_import_key' => null,
+                        ];
+                    } else {
+                        $productAttributes += [
+                            'video_type' => 'upload',
+                            'video_import_key' => pathinfo(basename(str_replace('\\', '/', $video)), PATHINFO_FILENAME),
+                            'youtube_url' => null,
+                        ];
+                    }
+                }
+                $product->fill($productAttributes);
+                if ($product->isDirty()) $product->save();
+
                 $attributes = [
                     'product_id' => $product->id,
                     'detail' => $detail,
@@ -85,8 +112,8 @@ class ProductSpreadsheetImporter
                     'thread' => $this->nullableString($data['rosca'] ?? null),
                     'quality' => $this->nullableString($data['calidad'] ?? null),
                     'list_price' => $this->decimal($data['precio_lista_us'] ?? $data['precio_lista'] ?? null),
-                    'discount_percent' => $this->percentage($data['descuento'] ?? $data['descuento_porcentaje'] ?? 0),
-                    'final_price' => $this->decimal($data['precio_final_us'] ?? $data['precio_final'] ?? null),
+                    'discount_percent' => 0,
+                    'final_price' => $this->decimal($data['precio_lista_us'] ?? $data['precio_lista'] ?? null),
                     'physical_stock' => $this->integer($data['stock_fisico'] ?? null),
                     'transit_stock' => $this->integer($data['stock_en_transito'] ?? null),
                     'is_active' => true,
@@ -174,27 +201,38 @@ class ProductSpreadsheetImporter
         if ($zip->open($path) !== true) throw new RuntimeException('No se pudo abrir el archivo XLSX.');
         $shared = [];
         if (($xml = $zip->getFromName('xl/sharedStrings.xml')) !== false) {
-            foreach (simplexml_load_string($xml)->si as $item) {
+            $sharedDocument = new DOMDocument();
+            $sharedDocument->loadXML($xml);
+            $sharedXPath = new DOMXPath($sharedDocument);
+            $sharedXPath->registerNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+            foreach ($sharedXPath->query('//x:si') as $item) {
                 $parts = [];
-                if (isset($item->t)) $parts[] = (string) $item->t;
-                foreach ($item->r as $run) $parts[] = (string) $run->t;
+                foreach ($sharedXPath->query('.//x:t', $item) as $text) $parts[] = $text->textContent;
                 $shared[] = implode('', $parts);
             }
         }
         $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
         $zip->close();
         if ($sheetXml === false) throw new RuntimeException('El XLSX no contiene una primera hoja.');
-        $sheet = simplexml_load_string($sheetXml);
+        $document = new DOMDocument();
+        $document->loadXML($sheetXml);
+        $xpath = new DOMXPath($document);
+        $xpath->registerNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
         $rows = [];
-        foreach ($sheet->sheetData->row as $row) {
+        foreach ($xpath->query('//x:sheetData/x:row') as $row) {
             $values = [];
-            foreach ($row->c as $cell) {
-                $reference = (string) $cell['r'];
+            foreach ($xpath->query('./x:c', $row) as $cell) {
+                if (!$cell instanceof DOMElement) continue;
+                $reference = $cell->getAttribute('r');
                 preg_match('/[A-Z]+/', $reference, $match);
                 $index = $this->columnIndex($match[0]) - 1;
-                $value = (string) $cell->v;
-                if ((string) $cell['t'] === 's') $value = $shared[(int) $value] ?? '';
-                if ((string) $cell['t'] === 'inlineStr') $value = (string) $cell->is->t;
+                $value = $xpath->query('./x:v', $cell)->item(0)?->textContent ?? '';
+                if ($cell->getAttribute('t') === 's') $value = $shared[(int) $value] ?? '';
+                if ($cell->getAttribute('t') === 'inlineStr') {
+                    $parts = [];
+                    foreach ($xpath->query('./x:is//x:t', $cell) as $text) $parts[] = $text->textContent;
+                    $value = implode('', $parts);
+                }
                 $values[$index] = $value;
             }
             if ($values) {
@@ -248,6 +286,54 @@ class ProductSpreadsheetImporter
     {
         if ($value === null || trim((string) $value) === '') return null;
         return trim((string) $value);
+    }
+
+    private function resolveCategory(array $data, Category $default): Category
+    {
+        $categoryName = $this->nullableString($data['categoria'] ?? null);
+        if (!$categoryName) return $default;
+
+        $parent = Category::firstOrCreate(
+            ['slug' => Str::slug($categoryName)],
+            ['name' => $categoryName, 'is_active' => true, 'sort_order' => 0]
+        );
+
+        $subcategoryName = $this->nullableString($data['sub_categoria'] ?? $data['subcategoria'] ?? null);
+        if (!$subcategoryName) return $parent;
+
+        $baseSlug = Str::slug($subcategoryName);
+        $existing = Category::where('slug', $baseSlug)->first();
+        $slug = $existing && $existing->parent_id !== $parent->id
+            ? Str::slug($categoryName.'-'.$subcategoryName)
+            : $baseSlug;
+
+        $subcategory = Category::firstOrCreate(
+            ['slug' => $slug],
+            ['parent_id' => $parent->id, 'name' => $subcategoryName, 'is_active' => true, 'sort_order' => 0]
+        );
+
+        $thirdName = $this->nullableString($data['sub_sub_categoria'] ?? null);
+        if (!$thirdName) return $subcategory;
+
+        $thirdBaseSlug = Str::slug($thirdName);
+        $thirdExisting = Category::where('slug', $thirdBaseSlug)->first();
+        $thirdSlug = $thirdExisting && $thirdExisting->parent_id !== $subcategory->id
+            ? Str::slug($categoryName.'-'.$subcategoryName.'-'.$thirdName)
+            : $thirdBaseSlug;
+
+        return Category::firstOrCreate(
+            ['slug' => $thirdSlug],
+            ['parent_id' => $subcategory->id, 'name' => $thirdName, 'is_active' => true, 'sort_order' => 0]
+        );
+    }
+
+    private function isYouTubeUrl(string $value): bool
+    {
+        $host = parse_url($value, PHP_URL_HOST);
+        if (!$host) return false;
+
+        $host = Str::lower($host);
+        return $host === 'youtu.be' || $host === 'youtube.com' || Str::endsWith($host, '.youtube.com');
     }
 
     private function append(array &$items, array $item, int $limit = 60): void

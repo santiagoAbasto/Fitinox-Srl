@@ -16,26 +16,24 @@ function UploadField({ title, hint, accept, multiple=false, onChange, name }: an
 }
 
 const emptyVariant = (sortOrder = 0) => ({
-    code: '', detail: '', tube: '', thread: '', quality: '', list_price: '', discount_percent: 0,
-    final_price: '', physical_stock: '', transit_stock: '', sort_order: sortOrder, is_active: true,
+    code: '', detail: '', tube: '', thread: '', quality: '', list_price: '',
+    physical_stock: '', transit_stock: '', sort_order: sortOrder, is_active: true,
 });
 
 function VariantFields({ data, setData, errors }: any) {
     const inputs = [
         ['code', 'Código *', 'AL-FSS-200-1-2'], ['detail', 'Detalle', 'Recto Macho'],
         ['tube', 'Tubo', '1/8"'], ['thread', 'Rosca', '1/8"'], ['quality', 'Calidad', 'AISI 316'],
-        ['list_price', 'Precio lista U$S', '0.00'], ['discount_percent', 'Descuento %', '0'],
-        ['final_price', 'Precio final U$S', '0.00'], ['physical_stock', 'Stock físico', '0'],
+        ['list_price', 'Precio lista U$S', '0.00'], ['physical_stock', 'Stock físico', '0'],
         ['transit_stock', 'Stock en tránsito', '0'], ['sort_order', 'Orden interno', '0'],
     ];
     return <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {inputs.map(([name, text, placeholder]) => <label key={name}>
             <span className={label}>{text}</span>
             <input
-                type={['list_price','discount_percent','final_price','physical_stock','transit_stock','sort_order'].includes(name) ? 'number' : 'text'}
-                step={['list_price','discount_percent','final_price'].includes(name) ? '0.01' : undefined}
-                min={['discount_percent','physical_stock','transit_stock','sort_order'].includes(name) ? 0 : undefined}
-                max={name === 'discount_percent' ? 100 : undefined}
+                type={['list_price','physical_stock','transit_stock','sort_order'].includes(name) ? 'number' : 'text'}
+                step={name === 'list_price' ? '0.01' : undefined}
+                min={['physical_stock','transit_stock','sort_order'].includes(name) ? 0 : undefined}
                 className={smallField}
                 placeholder={placeholder}
                 value={data[name] ?? ''}
@@ -74,8 +72,7 @@ function NewVariant({ productId, nextSortOrder }: any) {
 function VariantEditor({ variant, productId }: any) {
     const form = useForm<any>({
         code: variant.code || '', detail: variant.detail || '', tube: variant.tube || '', thread: variant.thread || '',
-        quality: variant.quality || '', list_price: variant.list_price ?? '', discount_percent: variant.discount_percent ?? 0,
-        final_price: variant.final_price ?? '', physical_stock: variant.physical_stock ?? '',
+        quality: variant.quality || '', list_price: variant.list_price ?? '', physical_stock: variant.physical_stock ?? '',
         transit_stock: variant.transit_stock ?? '', sort_order: variant.sort_order ?? 0, is_active: !!variant.is_active,
     });
     const save = () => form.put(`/admin/products/${productId}/variants/${variant.id}`, { preserveScroll: true });

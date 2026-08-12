@@ -261,11 +261,13 @@ class ClientPortalController extends Controller
     private function cartItems(Request $request)
     {
         $cart = $request->session()->get('fitinox_client_cart', []);
-        return ProductVariant::with('product.category')->whereIn('id', array_keys($cart))->where('is_active', true)->get()->map(function ($variant) use ($cart) {
+        $clientDiscount = (float) $this->client($request)->discount_percent;
+
+        return ProductVariant::with('product.category')->whereIn('id', array_keys($cart))->where('is_active', true)->get()->map(function ($variant) use ($cart, $clientDiscount) {
             $listPrice = (float) ($variant->list_price ?? $variant->final_price ?? 0);
-            $price = (float) ($variant->final_price ?? $listPrice);
+            $price = round($listPrice * (1 - ($clientDiscount / 100)), 2);
             $quantity = (int) $cart[$variant->id];
-            return ['variant' => $variant, 'quantity' => $quantity, 'list_price' => $listPrice, 'price' => $price, 'discount' => (float) $variant->discount_percent, 'list_total' => $listPrice * $quantity, 'total' => $price * $quantity];
+            return ['variant' => $variant, 'quantity' => $quantity, 'list_price' => $listPrice, 'price' => $price, 'discount' => $clientDiscount, 'list_total' => $listPrice * $quantity, 'total' => $price * $quantity];
         });
     }
 
