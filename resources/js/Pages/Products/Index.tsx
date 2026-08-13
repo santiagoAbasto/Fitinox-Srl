@@ -69,6 +69,8 @@ export default function Index({ products, categories, filters, nextOrder }: { pr
     const report = (usePage().props as any).flash?.import_report;
     const form = useForm<any>({ category_id: categories[0]?.id || '', name: '', sku: '', summary: '', description: '', main_image_file: null, video_type: '', video_file: null, youtube_url: '', is_featured: false, is_active: true, sort_order: nextOrder });
     const importForm = useForm<{file: File|null}>({ file: null });
+    const [showClearInventory, setShowClearInventory] = useState(false);
+    const clearForm = useForm<{confirmation:string}>({ confirmation: '' });
     return <AdminLayout title="Productos"><Head title="Productos | Fitinox"/>
         <section id="importar" className="mb-7 scroll-mt-28 overflow-hidden rounded-2xl border border-[#dfe5e8] bg-white shadow-[0_10px_35px_rgba(19,43,59,.05)]">
             <div className="flex flex-wrap items-center gap-4 border-b border-[#edf0f2] px-6 py-5"><span className="grid size-11 place-items-center rounded-xl bg-[#edf3f7] text-[#1954b7]"><FileSpreadsheet size={20}/></span><div className="min-w-0 grow"><h2 className="text-[15px] font-semibold text-[#132b3b]">Importación masiva</h2><p className="mt-1 text-[11px] text-[#758189]">Descargá el Excel con los datos actuales, modificalo y volvé a importarlo.</p></div><a href="/admin/products/import/template" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#1954b7] px-4 text-[11px] font-semibold text-[#1954b7] transition hover:bg-[#edf3f7]"><Download size={16}/> DESCARGAR PLANTILLA ACTUAL</a></div>
@@ -81,6 +83,23 @@ export default function Index({ products, categories, filters, nextOrder }: { pr
         <section className="mb-7 overflow-hidden rounded-2xl border border-[#dfe5e8] bg-white">
             <header className="border-b border-[#edf0f2] px-6 py-5"><h2 className="text-[15px] font-semibold text-[#132b3b]">Archivos multimedia masivos</h2><p className="mt-1 text-[11px] text-[#65747c]">Primero importá el Excel. Después cargá fotos y videos: el nombre debe coincidir con las columnas Foto y Video; la extensión puede ser diferente.</p></header>
             <div className="divide-y divide-[#edf0f2] lg:grid lg:grid-cols-2 lg:divide-x lg:divide-y-0"><MediaBatchUploader kind="images"/><MediaBatchUploader kind="videos"/></div>
+        </section>
+        <section className="mb-7 overflow-hidden rounded-2xl border border-red-200 bg-white">
+            <div className="flex flex-wrap items-center gap-4 px-6 py-5">
+                <span className="grid size-11 place-items-center rounded-xl bg-red-50 text-red-700"><Trash2 size={20}/></span>
+                <div className="min-w-0 grow"><h2 className="text-[15px] font-semibold text-[#132b3b]">Limpieza del inventario</h2><p className="mt-1 max-w-[75ch] text-[11px] leading-5 text-[#65747c]">El Excel sincroniza automáticamente: crea lo nuevo, actualiza lo existente y elimina códigos, productos y archivos que ya no aparecen. Usá el vaciado total solamente para comenzar desde cero.</p></div>
+                <button type="button" onClick={()=>setShowClearInventory(value=>!value)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-red-300 px-4 text-[11px] font-semibold text-red-700 transition hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"><Trash2 size={16}/> VACIAR INVENTARIO</button>
+            </div>
+            {showClearInventory && <form onSubmit={event=>{event.preventDefault();clearForm.delete('/admin/products/inventory/all',{preserveScroll:true,onSuccess:()=>{clearForm.reset();setShowClearInventory(false)}})}} className="border-t border-red-100 bg-red-50/60 px-6 py-5">
+                <p className="text-[12px] font-semibold text-red-900">Esta acción elimina todos los productos, códigos, categorías, fotos y videos del inventario.</p>
+                <p className="mt-1 text-[11px] text-red-800">Para confirmar, escribí <strong>VACIAR</strong>.</p>
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                    <input value={clearForm.data.confirmation} onChange={event=>clearForm.setData('confirmation',event.target.value.toUpperCase())} className="min-h-11 grow rounded-xl border border-red-200 bg-white px-4 text-[12px] outline-none focus:border-red-600" placeholder="Escribí VACIAR" autoComplete="off"/>
+                    <button type="button" onClick={()=>{clearForm.reset();setShowClearInventory(false)}} className="min-h-11 rounded-xl border border-[#cdd5d9] bg-white px-5 text-[11px] font-semibold text-[#52616a]">CANCELAR</button>
+                    <button disabled={clearForm.data.confirmation!=='VACIAR'||clearForm.processing} className="min-h-11 rounded-xl bg-red-700 px-5 text-[11px] font-semibold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-40">{clearForm.processing?'ELIMINANDO…':'ELIMINAR TODO'}</button>
+                </div>
+                {clearForm.errors.confirmation && <p className="mt-2 text-[11px] text-red-700">{clearForm.errors.confirmation}</p>}
+            </form>}
         </section>
         {report && <section className="mb-7 overflow-hidden rounded-2xl border border-[#cce9dc] bg-white shadow-[0_12px_36px_rgba(18,104,75,.08)]">
             <header className="flex flex-wrap items-center gap-4 border-b border-[#e5f2ec] bg-[#f1faf6] px-6 py-5"><span className="grid size-11 place-items-center rounded-xl bg-white text-[#21845f] shadow-sm"><CheckCircle2 size={21}/></span><div className="min-w-0 grow"><h2 className="text-[15px] font-semibold text-[#173c30]">Informe de importación</h2><p className="mt-1 text-[10px] text-[#698078]">{report.file} · {report.processed} códigos únicos · {report.duplicates || 0} duplicados resueltos · {report.inferred_details || 0} familias inferidas</p></div><span className="rounded-full bg-white px-4 py-2 text-[10px] font-semibold text-[#21845f]">{report.products_created} productos nuevos</span></header>

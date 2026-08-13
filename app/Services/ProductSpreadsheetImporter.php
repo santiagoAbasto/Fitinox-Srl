@@ -17,6 +17,10 @@ use ZipArchive;
 
 class ProductSpreadsheetImporter
 {
+    public function __construct(private readonly ProductInventoryCleaner $cleaner)
+    {
+    }
+
     public function import(UploadedFile $file): array
     {
         $rows = strtolower($file->getClientOriginalExtension()) === 'csv'
@@ -29,11 +33,13 @@ class ProductSpreadsheetImporter
             if (!in_array($column, $headers, true)) throw new RuntimeException("Falta la columna obligatoria: {$column}.");
         }
 
-        return DB::transaction(function () use ($rows, $headers, $firstDataRow, $file) {
+        $filesToDelete = [];
+        $report = DB::transaction(function () use ($rows, $headers, $firstDataRow, $file, &$filesToDelete) {
             $report = [
                 'file' => $file->getClientOriginalName(),
                 'processed' => 0, 'created' => 0, 'updated' => 0, 'unchanged' => 0, 'skipped' => 0,
                 'products_created' => 0, 'duplicates' => 0, 'inferred_details' => 0,
+                'variants_deleted' => 0, 'products_deleted' => 0, 'categories_deleted' => 0, 'files_deleted' => 0,
                 'changes' => [], 'errors' => [],
             ];
             $defaultCategory = Category::firstOrCreate(
@@ -56,6 +62,10 @@ class ProductSpreadsheetImporter
                 $code = trim((string) $data['codigo']);
                 if (isset($prepared[$code])) $report['duplicates']++;
                 $prepared[$code] = ['row' => $excelRow, 'data' => $data];
+            }
+
+            if ($prepared === []) {
+                throw new RuntimeException('El archivo no contiene códigos válidos. No se modificó el inventario.');
             }
 
             foreach ($prepared as $code => $record) {
@@ -84,10 +94,19 @@ class ProductSpreadsheetImporter
 
                 $productAttributes = ['category_id' => $category->id];
                 if ($photo = $this->nullableString($data['foto'] ?? null)) {
-                    $productAttributes['photo_import_key'] = pathinfo(basename(str_replace('\\', '/', $photo)), PATHINFO_FILENAME);
+                    $newPhotoKey = pathinfo(basename(str_replace('\\', '/', $photo)), PATHINFO_FILENAME);
+                    if ($product->photo_import_key && $product->photo_import_key !== $newPhotoKey && $product->main_image) {
+                        $filesToDelete[] = $product->main_image;
+                        $productAttributes['main_image'] = null;
+                    }
+                    $productAttributes['photo_import_key'] = $newPhotoKey;
+                } else {
+                    if ($product->main_image) $filesToDelete[] = $product->main_image;
+                    $productAttributes += ['photo_import_key' => null, 'main_image' => null];
                 }
                 if ($video = $this->nullableString($data['video'] ?? null)) {
                     if ($this->isYouTubeUrl($video)) {
+                        if ($product->video_path) $filesToDelete[] = $product->video_path;
                         $productAttributes += [
                             'video_type' => 'youtube',
                             'youtube_url' => $video,
@@ -95,12 +114,20 @@ class ProductSpreadsheetImporter
                             'video_import_key' => null,
                         ];
                     } else {
+                        $newVideoKey = pathinfo(basename(str_replace('\\', '/', $video)), PATHINFO_FILENAME);
+                        if ($product->video_import_key && $product->video_import_key !== $newVideoKey && $product->video_path) {
+                            $filesToDelete[] = $product->video_path;
+                            $productAttributes['video_path'] = null;
+                        }
                         $productAttributes += [
                             'video_type' => 'upload',
-                            'video_import_key' => pathinfo(basename(str_replace('\\', '/', $video)), PATHINFO_FILENAME),
+                            'video_import_key' => $newVideoKey,
                             'youtube_url' => null,
                         ];
                     }
+                } else {
+                    if ($product->video_path) $filesToDelete[] = $product->video_path;
+                    $productAttributes += ['video_type' => null, 'video_path' => null, 'video_import_key' => null, 'youtube_url' => null];
                 }
                 $product->fill($productAttributes);
                 if ($product->isDirty()) $product->save();
@@ -143,8 +170,33 @@ class ProductSpreadsheetImporter
                 ]);
             }
 
+            $incomingCodes = array_keys($prepared);
+            $obsoleteVariants = ProductVariant::query()->whereNotIn('code', $incomingCodes)->get();
+            $report['variants_deleted'] = $obsoleteVariants->count();
+            ProductVariant::query()->whereNotIn('code', $incomingCodes)->delete();
+
+            $obsoleteProducts = Product::query()->doesntHave('variants')->get();
+            foreach ($obsoleteProducts as $obsoleteProduct) {
+                $filesToDelete = array_merge($filesToDelete, $this->cleaner->mediaPaths($obsoleteProduct));
+            }
+            $report['products_deleted'] = $obsoleteProducts->count();
+            Product::query()->whereKey($obsoleteProducts->modelKeys())->delete();
+
+            do {
+                $emptyCategories = Category::query()->doesntHave('products')->doesntHave('children')->pluck('id');
+                $deleted = $emptyCategories->count();
+                if ($deleted) Category::query()->whereKey($emptyCategories)->delete();
+                $report['categories_deleted'] += $deleted;
+            } while ($deleted > 0);
+
+            $report['files_deleted'] = count(array_unique(array_filter($filesToDelete)));
+
             return $report;
         });
+
+        $this->cleaner->deleteFiles($filesToDelete);
+
+        return $report;
     }
 
     private function extractTable(array $rows): array
@@ -294,37 +346,31 @@ class ProductSpreadsheetImporter
         if (!$categoryName) return $default;
 
         $parent = Category::firstOrCreate(
-            ['slug' => Str::slug($categoryName)],
-            ['name' => $categoryName, 'is_active' => true, 'sort_order' => 0]
+            ['parent_id' => null, 'name' => $categoryName],
+            ['slug' => Str::slug($categoryName), 'is_active' => true, 'sort_order' => 0]
         );
 
         $subcategoryName = $this->nullableString($data['sub_categoria'] ?? $data['subcategoria'] ?? null);
         if (!$subcategoryName) return $parent;
 
-        $baseSlug = Str::slug($subcategoryName);
-        $existing = Category::where('slug', $baseSlug)->first();
-        $slug = $existing && $existing->parent_id !== $parent->id
-            ? Str::slug($categoryName.'-'.$subcategoryName)
-            : $baseSlug;
-
         $subcategory = Category::firstOrCreate(
-            ['slug' => $slug],
-            ['parent_id' => $parent->id, 'name' => $subcategoryName, 'is_active' => true, 'sort_order' => 0]
+            ['parent_id' => $parent->id, 'name' => $subcategoryName],
+            ['slug' => $this->availableSlug(Str::slug($subcategoryName), $parent->id, $categoryName.'-'.$subcategoryName), 'is_active' => true, 'sort_order' => 0]
         );
 
         $thirdName = $this->nullableString($data['sub_sub_categoria'] ?? null);
         if (!$thirdName) return $subcategory;
 
-        $thirdBaseSlug = Str::slug($thirdName);
-        $thirdExisting = Category::where('slug', $thirdBaseSlug)->first();
-        $thirdSlug = $thirdExisting && $thirdExisting->parent_id !== $subcategory->id
-            ? Str::slug($categoryName.'-'.$subcategoryName.'-'.$thirdName)
-            : $thirdBaseSlug;
-
         return Category::firstOrCreate(
-            ['slug' => $thirdSlug],
-            ['parent_id' => $subcategory->id, 'name' => $thirdName, 'is_active' => true, 'sort_order' => 0]
+            ['parent_id' => $subcategory->id, 'name' => $thirdName],
+            ['slug' => $this->availableSlug(Str::slug($thirdName), $subcategory->id, $categoryName.'-'.$subcategoryName.'-'.$thirdName), 'is_active' => true, 'sort_order' => 0]
         );
+    }
+
+    private function availableSlug(string $base, int $parentId, string $fallback): string
+    {
+        $existing = Category::where('slug', $base)->first();
+        return !$existing || (int) $existing->parent_id === $parentId ? $base : Str::slug($fallback);
     }
 
     private function isYouTubeUrl(string $value): bool

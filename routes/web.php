@@ -83,6 +83,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/nosotros', [AdminAboutController::class, 'update'])->name('about.update');
     Route::resource('pages', PageController::class)->only(['index', 'edit', 'update']);
     Route::resource('categories', CategoryController::class)->except(['create', 'show']);
+    Route::delete('/products/inventory/all', [AdminProductController::class, 'destroyInventory'])->middleware('admin.level:admin')->name('products.inventory.destroy');
     Route::resource('products', AdminProductController::class)->except(['create', 'show'])->middleware('admin.level:admin');
     Route::get('/products/import/template', [AdminProductController::class, 'downloadTemplate'])->middleware('admin.level:admin')->name('products.import.template');
     Route::post('/products/import', [AdminProductController::class, 'import'])->middleware(['admin.level:admin', 'throttle:upload'])->name('products.import');

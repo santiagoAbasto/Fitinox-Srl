@@ -121,7 +121,7 @@ class ProductController extends Controller
     public function index()
     {
         return view('products.index', [
-            'categories' => Category::where('is_active', true)->orderBy('sort_order')->get(),
+            'categories' => Category::where('is_active', true)->whereNull('parent_id')->orderBy('sort_order')->get(),
             'settings' => Setting::pluck('value', 'key'),
         ]);
     }
@@ -129,12 +129,39 @@ class ProductController extends Controller
     public function category(Category $category)
     {
         abort_unless($category->is_active, 404);
+
+        $activeCategoryIds = [];
+        $activeCategory = $category;
+        while ($activeCategory) {
+            $activeCategoryIds[] = $activeCategory->id;
+            $activeCategory = $activeCategory->parent;
+        }
+
         return view('products.category', [
             'category' => $category,
-            'categories' => Category::where('is_active', true)->with('children')->orderBy('sort_order')->get(),
-            'products' => $category->products()->where('is_active', true)->orderBy('sort_order')->get(),
+            'categories' => Category::where('is_active', true)
+                ->whereNull('parent_id')
+                ->with(['children' => fn ($query) => $query
+                    ->where('is_active', true)
+                    ->with(['children' => fn ($children) => $children->where('is_active', true)])])
+                ->orderBy('sort_order')
+                ->get(),
+            'activeCategoryIds' => $activeCategoryIds,
+            'products' => Product::whereIn('category_id', [$category->id, ...$this->descendantIds($category)])->where('is_active', true)->orderBy('sort_order')->get(),
             'settings' => Setting::pluck('value', 'key'),
         ]);
+    }
+
+    private function descendantIds(Category $category): array
+    {
+        $ids = [];
+        $pending = [$category->id];
+        while ($pending) {
+            $children = Category::whereIn('parent_id', $pending)->pluck('id')->all();
+            $pending = array_values(array_diff($children, $ids));
+            $ids = array_values(array_unique(array_merge($ids, $pending)));
+        }
+        return $ids;
     }
 
     public function show(Product $product)

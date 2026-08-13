@@ -8,6 +8,7 @@ use App\Models\ProductVariant;
 use App\Services\ProductSpreadsheetImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ProductSpreadsheetImporterTest extends TestCase
@@ -55,5 +56,40 @@ class ProductSpreadsheetImporterTest extends TestCase
         $this->assertSame('youtube', $product->video_type);
         $this->assertSame('https://youtu.be/example123', $product->youtube_url);
         $this->assertNull($product->video_path);
+    }
+
+    public function test_it_synchronizes_the_inventory_and_removes_absent_products_and_media(): void
+    {
+        Storage::fake('public');
+        $category = Category::create(['name' => 'Vieja', 'slug' => 'vieja', 'is_active' => true, 'sort_order' => 0]);
+        $obsolete = Product::create([
+            'category_id' => $category->id,
+            'name' => 'Producto viejo',
+            'slug' => 'producto-viejo',
+            'main_image' => 'products/images/vieja.jpg',
+            'video_path' => 'products/videos/viejo.mp4',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        $obsolete->variants()->create(['code' => 'CODIGO-VIEJO', 'is_active' => true]);
+        Storage::disk('public')->put('products/images/vieja.jpg', 'image');
+        Storage::disk('public')->put('products/videos/viejo.mp4', 'video');
+
+        $csv = implode("\n", [
+            'CODIGO;DETALLE;CATEGORIA;SUBCATEGORIA;SUB_SUB_CATEGORIA;TUBO;ROSCA;FOTO;VIDEO',
+            'CODIGO-NUEVO;Producto nuevo;Accesorios;Conexiones;Pulgada;1/8";1/8";nueva-foto;nuevo-video',
+        ]);
+
+        $report = app(ProductSpreadsheetImporter::class)->import(
+            UploadedFile::fake()->createWithContent('inventario.csv', $csv)
+        );
+
+        $this->assertSame(1, $report['variants_deleted']);
+        $this->assertSame(1, $report['products_deleted']);
+        $this->assertDatabaseMissing('product_variants', ['code' => 'CODIGO-VIEJO']);
+        $this->assertDatabaseMissing('products', ['slug' => 'producto-viejo']);
+        $this->assertDatabaseHas('product_variants', ['code' => 'CODIGO-NUEVO']);
+        Storage::disk('public')->assertMissing('products/images/vieja.jpg');
+        Storage::disk('public')->assertMissing('products/videos/viejo.mp4');
     }
 }

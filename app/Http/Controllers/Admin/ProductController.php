@@ -9,6 +9,7 @@ use App\Models\ProductVariant;
 use App\Services\ProductSpreadsheetImporter;
 use App\Services\ProductSpreadsheetExporter;
 use App\Services\ProductMediaBatchImporter;
+use App\Services\ProductInventoryCleaner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Support\OrderCode;
@@ -148,6 +149,20 @@ class ProductController extends Controller
         ]);
 
         return response()->json($importer->import($data['files'], $type));
+    }
+
+    public function destroyInventory(Request $request, ProductInventoryCleaner $cleaner)
+    {
+        $data = $request->validate([
+            'confirmation' => ['required', 'string', Rule::in(['VACIAR'])],
+        ]);
+
+        $report = $cleaner->clear();
+
+        return back()->with(
+            'success',
+            "Inventario vaciado: {$report['products']} productos, {$report['variants']} códigos y {$report['files']} archivos eliminados."
+        );
     }
 
     public function storeVariant(Request $request, Product $product)

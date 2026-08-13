@@ -19,7 +19,14 @@
                 @endif
             </div>
             <div class="group relative order-1 h-[320px] overflow-hidden rounded-[4px] border border-[#dedfe0] bg-white sm:h-[440px] min-[1224px]:order-2 min-[1224px]:!h-[496px]" data-product-media>
-                <div class="absolute inset-0 grid place-items-center" data-gallery-image-stage><img src="{{ Storage::url($product->main_image ?: 'products/product-placeholder.svg') }}" class="h-full w-full object-contain" alt="{{ $product->name }}"></div>
+                <div
+                    class="absolute inset-0 bg-contain bg-center bg-no-repeat"
+                    style="background-image: url('{{ Storage::url($product->main_image ?: 'products/product-placeholder.svg') }}');"
+                    data-gallery-image-stage
+                    role="img"
+                    aria-label="{{ $product->name }}"
+                >
+                </div>
                 @if($hasProductVideo)
                     <div class="absolute inset-0 hidden bg-black" data-gallery-video-stage>
                         @if($product->video_type === 'youtube')
@@ -29,7 +36,6 @@
                         @endif
                     </div>
                 @endif
-                <span class="pointer-events-none absolute right-[16px] bottom-[16px] grid size-[42px] place-items-center rounded-full bg-black/35 backdrop-blur-[2px]" title="{{ $hasProductVideo ? 'Vista 360° disponible' : 'Vista 360° próximamente' }}"><img src="/storage/figma/products/view-360.svg" alt="Vista 360 grados" class="h-[30px] w-[30px] shrink-0"></span>
             </div>
         </div>
         <div class="relative min-w-0 min-[1224px]:h-[496px]"><p class="text-[12px] font-bold text-[#1954b7]">{{ mb_strtoupper($product->category->name) }}</p><h1 class="mt-4 border-b border-[#dedfe0] pb-4 text-[30px] leading-[1.2] font-medium text-fitinox sm:text-[32px] min-[1224px]:mt-[25px] min-[1224px]:leading-[38px]">{{ $product->name }}</h1>@if($product->description)<div class="mt-5 max-h-none overflow-visible pr-0 text-[16px] leading-[1.6] min-[1224px]:mt-6 min-[1224px]:max-h-[300px] min-[1224px]:overflow-y-auto min-[1224px]:pr-2">{!! $product->description !!}</div>@endif<a href="{{ route('products.datasheet', $product) }}" target="_blank" class="mt-8 inline-flex min-h-12 w-full items-center justify-center rounded-[7px] border border-fitinox bg-white px-5 text-[13px] font-medium tracking-[.03em] text-fitinox transition hover:bg-[#edf3f7] min-[1224px]:absolute min-[1224px]:bottom-0 min-[1224px]:left-0 min-[1224px]:mt-0 min-[1224px]:h-[36px] min-[1224px]:min-h-0 min-[1224px]:w-[280px]">FICHA TÉCNICA</a></div>
@@ -45,7 +51,7 @@
             @endforeach
         </div>
     </section>
-    @if($related->isNotEmpty())<section data-reveal class="py-[80px]"><h2 class="text-[32px] font-medium text-fitinox">Productos relacionados</h2><div class="mt-[32px] grid gap-[24px] sm:grid-cols-2 lg:grid-cols-4">@foreach($related as $item)<a href="{{ route('products.show',$item) }}" class="h-[350px] rounded-[6px] border border-[#dedfe0] p-6"><div class="flex h-[220px] items-center justify-center"><img src="{{ Storage::url($item->main_image) }}" class="max-h-full max-w-full object-contain" alt=""></div><p class="text-[12px] font-bold text-[#1954b7]">{{ mb_strtoupper($item->category->name) }}</p><h3 class="mt-2 text-[18px] font-medium">{{ $item->name }}</h3></a>@endforeach</div></section>@endif
+    @if($related->isNotEmpty())<section data-reveal class="py-[80px]"><h2 class="text-[32px] font-medium text-fitinox">Productos relacionados</h2><div class="mt-[32px] grid gap-[24px] sm:grid-cols-2 lg:grid-cols-4">@foreach($related as $item)<a href="{{ route('products.show',$item) }}" class="h-[350px] overflow-hidden rounded-[6px] border border-[#dedfe0] bg-white"><div role="img" aria-label="{{ $item->name }}" class="h-[250px] w-full bg-contain bg-center bg-no-repeat" style="background-image: url('{{ Storage::url($item->main_image ?: 'products/product-placeholder.svg') }}');"></div><div class="px-6 pt-3"><p class="text-[12px] font-bold text-[#1954b7]">{{ mb_strtoupper($item->category->name) }}</p><h3 class="mt-2 text-[18px] font-medium">{{ $item->name }}</h3></div></a>@endforeach</div></section>@endif
 </div>
 
 <script>
@@ -75,8 +81,9 @@
             } else {
                 video?.pause();
                 if (iframe?.getAttribute('src')) iframe.removeAttribute('src');
-                const image = imageStage?.querySelector('img');
-                if (image) image.src = control.dataset.galleryImage;
+                if (imageStage && control.dataset.galleryImage) {
+                    imageStage.style.backgroundImage = `url(${JSON.stringify(control.dataset.galleryImage)})`;
+                }
             }
         };
 

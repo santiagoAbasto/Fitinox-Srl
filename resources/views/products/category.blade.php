@@ -12,6 +12,7 @@
                 @foreach($categories as $item)
                     @php
                         $isCurrent = $item->id === $category->id;
+                        $isActiveBranch = in_array($item->id, $activeCategoryIds, true);
                         $fallbackChildren = match ($item->slug) {
                             'accesorios-para-tubos' => [
                                 'Conexiones Aja-Lock',
@@ -29,21 +30,22 @@
 
                     <section class="border-b border-[#dedfe0]" data-accordion-item>
                         <div class="flex min-h-[32px] items-center justify-between gap-3">
-                            <a
+                    <a
                                 href="{{ route('products.category', $item) }}"
-                                class="min-w-0 flex-1 text-[16px] leading-[32px] text-[#132b3b] {{ $isCurrent ? 'font-semibold' : 'font-normal' }}"
+                                class="min-w-0 flex-1 text-[16px] leading-[32px] text-[#132b3b] {{ $isActiveBranch ? 'font-semibold' : 'font-normal' }}"
+                                @if($isCurrent) aria-current="page" @endif
                             >
                                 {{ $item->name }}
                             </a>
                             <button
                                 type="button"
                                 class="flex size-[32px] shrink-0 items-center justify-center text-[#132b3b]"
-                                aria-expanded="{{ $isCurrent ? 'true' : 'false' }}"
+                                aria-expanded="{{ $isActiveBranch ? 'true' : 'false' }}"
                                 aria-controls="category-panel-{{ $item->id }}"
                                 data-accordion-trigger
                             >
                                 <span class="sr-only">Mostrar opciones de {{ $item->name }}</span>
-                                <svg class="size-[18px] transition-transform duration-200 {{ $isCurrent ? 'rotate-180' : '' }}" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                                <svg class="size-[18px] transition-transform duration-200 {{ $isActiveBranch ? 'rotate-180' : '' }}" viewBox="0 0 18 18" fill="none" aria-hidden="true">
                                     <path d="M4.5 6.75L9 11.25L13.5 6.75" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>
                                 </svg>
                             </button>
@@ -51,16 +53,25 @@
 
                         <div
                             id="category-panel-{{ $item->id }}"
-                            class="{{ $isCurrent && count($childLabels) ? 'block' : 'hidden' }} mt-[2px] pb-[10px]"
+                            class="{{ $isActiveBranch && count($childLabels) ? 'block' : 'hidden' }} mt-[2px] pb-[10px]"
                             data-accordion-panel
                         >
-                            @foreach($childLabels as $childIndex => $childLabel)
-                                <a
-                                    href="{{ route('products.category', $item) }}#{{ Str::slug($childLabel) }}"
-                                    class="block pl-[10px] text-[14px] leading-[28px] text-[#35363a] transition-colors hover:text-[#1954b7] {{ $isCurrent && $childIndex === 0 ? 'font-bold' : 'font-normal' }}"
-                                >
-                                    {{ $childLabel }}
-                                </a>
+                            @foreach($item->children as $childIndex => $child)
+                                @php
+                                    $isChildCurrent = $child->id === $category->id;
+                                    $isChildActive = in_array($child->id, $activeCategoryIds, true);
+                                @endphp
+                                <div class="pl-[10px]">
+                                    <a href="{{ route('products.category', $child) }}" class="block text-[14px] leading-[28px] transition-colors hover:text-[#1954b7] {{ $isChildActive ? 'font-bold text-[#132b3b]' : 'font-normal text-[#35363a]' }}" @if($isChildCurrent) aria-current="page" @endif>{{ $child->name }}</a>
+                                    @if($child->children->isNotEmpty())
+                                        <div class="border-l border-[#dedfe0] pl-[12px]">
+                                            @foreach($child->children as $grandchild)
+                                                @php($isGrandchildCurrent = $grandchild->id === $category->id)
+                                                <a href="{{ route('products.category', $grandchild) }}" class="block text-[13px] leading-[26px] transition-colors hover:text-[#1954b7] {{ $isGrandchildCurrent ? 'font-semibold text-[#1954b7]' : 'text-[#5b6267]' }}" @if($isGrandchildCurrent) aria-current="page" @endif>{{ $grandchild->name }}</a>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
                             @endforeach
                         </div>
                     </section>
@@ -71,7 +82,7 @@
         <div class="grid content-start gap-[24px] sm:grid-cols-2 xl:grid-cols-3">
             @foreach($products as $product)
             <a data-reveal-item href="{{ route('products.show',$product) }}" class="h-[350px] overflow-hidden rounded-[6px] border border-[#dedfe0] bg-white">
-                <div class="flex h-[250px] items-center justify-center px-[24px] pt-[20px] pb-[10px]"><img src="{{ Storage::url($product->main_image ?: 'products/product-placeholder.svg') }}" alt="{{ $product->name }}" class="max-h-full max-w-full object-contain"></div>
+                <div role="img" aria-label="{{ $product->name }}" class="h-[250px] w-full bg-contain bg-center bg-no-repeat" style="background-image: url('{{ Storage::url($product->main_image ?: 'products/product-placeholder.svg') }}');"></div>
                 <div class="px-[24px] pt-[3px]"><p class="text-[12px] leading-[18px] font-bold text-[#1954b7]">{{ mb_strtoupper($category->name) }}</p><h3 class="mt-[5px] text-[18px] leading-[27px] font-medium text-black">{{ $product->name }}</h3></div>
             </a>
             @endforeach
