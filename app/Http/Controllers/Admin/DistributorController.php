@@ -55,7 +55,9 @@ class DistributorController extends Controller
 
     private function validated(Request $request): array
     {
-        return $request->validate([
+        $this->normalizeCoordinates($request);
+
+        $data = $request->validate([
             'country' => ['required', 'max:100'],
             'name' => ['required', 'max:200'],
             'address' => ['required', 'max:255'],
@@ -63,10 +65,74 @@ class DistributorController extends Controller
             'email' => ['nullable', 'email', 'max:180'],
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
-            'marker_x' => ['required', 'integer', 'between:0,100'],
-            'marker_y' => ['required', 'integer', 'between:0,100'],
             'sort_order' => ['required', 'string', 'max:3', 'regex:/^[A-Z]+$/'],
             'is_active' => ['required', 'boolean'],
+        ], [
+            'latitude.required' => 'Ingresá la latitud que muestra Google Maps.',
+            'latitude.numeric' => 'La latitud debe contener solamente un número.',
+            'latitude.between' => 'La latitud debe estar entre -90 y 90.',
+            'longitude.required' => 'Ingresá la longitud que muestra Google Maps.',
+            'longitude.numeric' => 'La longitud debe contener solamente un número.',
+            'longitude.between' => 'La longitud debe estar entre -180 y 180.',
         ]);
+
+        // The database stores seven decimal places, which provides centimetre-level
+        // precision and avoids errors with Google's longer coordinate values.
+        $data['latitude'] = round((float) $data['latitude'], 7);
+        $data['longitude'] = round((float) $data['longitude'], 7);
+
+        return $data;
+    }
+
+    private function normalizeCoordinates(Request $request): void
+    {
+        $latitude = $request->input('latitude');
+        $longitude = $request->input('longitude');
+
+        // Google Maps copies both coordinates together. Allow users to paste
+        // that pair into the latitude field and fill the longitude automatically.
+        if (is_string($latitude) && (! is_string($longitude) || trim($longitude) === '')) {
+            $pair = $this->coordinatePair($latitude);
+
+            if ($pair !== null) {
+                [$latitude, $longitude] = $pair;
+            }
+        }
+
+        $request->merge([
+            'latitude' => $this->coordinateValue($latitude),
+            'longitude' => $this->coordinateValue($longitude),
+        ]);
+    }
+
+    /** @return array{0: string, 1: string}|null */
+    private function coordinatePair(string $value): ?array
+    {
+        $value = str_replace(['−', '–', '—'], '-', $value);
+        preg_match_all('/[+-]?\d+(?:[.,]\d+)?/', $value, $matches);
+
+        if (count($matches[0]) < 2) {
+            return null;
+        }
+
+        return [
+            str_replace(',', '.', $matches[0][0]),
+            str_replace(',', '.', $matches[0][1]),
+        ];
+    }
+
+    private function coordinateValue(mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        $value = trim(str_replace(['−', '–', '—'], '-', $value));
+
+        if (preg_match('/^[+-]?\d+(?:[.,]\d+)?$/', $value) === 1) {
+            return str_replace(',', '.', $value);
+        }
+
+        return $value;
     }
 }

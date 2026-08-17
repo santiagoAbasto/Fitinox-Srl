@@ -145,13 +145,14 @@
             gap: 4px;
             padding-block: 12px;
         }
+        .product-variants-table { min-width: 0 !important; }
         .product-variants-table,
         .product-variants-table tbody { display: block !important; }
         .product-variants-table colgroup,
         .product-variants-table thead { display: none !important; }
         .product-variants-table tr {
             display: grid !important;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(var(--variant-columns, 3), minmax(0, 1fr));
             gap: 12px;
             height: auto !important;
             margin-bottom: 16px;

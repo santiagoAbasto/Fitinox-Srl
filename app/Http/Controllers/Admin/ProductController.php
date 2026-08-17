@@ -240,6 +240,10 @@ class ProductController extends Controller
             'tube' => ['nullable', 'max:80'],
             'thread' => ['nullable', 'max:80'],
             'quality' => ['nullable', 'max:100'],
+            'characteristics' => ['nullable', 'array', 'max:50'],
+            'characteristics.*.key' => ['nullable', 'string', 'max:100'],
+            'characteristics.*.label' => ['required', 'string', 'max:100'],
+            'characteristics.*.value' => ['nullable', 'string', 'max:500'],
             'list_price' => ['nullable', 'numeric', 'min:0'],
             'physical_stock' => ['nullable', 'integer', 'min:0'],
             'transit_stock' => ['nullable', 'integer', 'min:0'],
@@ -249,6 +253,20 @@ class ProductController extends Controller
 
         $data['discount_percent'] = 0;
         $data['final_price'] = $data['list_price'];
+        $customCharacteristics = collect($data['characteristics'] ?? [])
+            ->mapWithKeys(function (array $characteristic) {
+                $label = trim($characteristic['label']);
+                $key = Str::of($characteristic['key'] ?: $label)
+                    ->ascii()->lower()->replaceMatches('/[^a-z0-9]+/', '_')->trim('_')->toString();
+                if ($key === '' || in_array($key, ['tubo', 'rosca', 'calidad'], true)) return [];
+
+                return [$key => ['label' => $label, 'value' => filled($characteristic['value'] ?? null) ? trim($characteristic['value']) : null]];
+            });
+        $data['characteristics'] = collect([
+            'tubo' => ['label' => 'Tubo', 'value' => filled($data['tube'] ?? null) ? trim($data['tube']) : null],
+            'rosca' => ['label' => 'Rosca', 'value' => filled($data['thread'] ?? null) ? trim($data['thread']) : null],
+            'calidad' => ['label' => 'Calidad', 'value' => filled($data['quality'] ?? null) ? trim($data['quality']) : null],
+        ])->merge($customCharacteristics)->all();
 
         return $data;
     }

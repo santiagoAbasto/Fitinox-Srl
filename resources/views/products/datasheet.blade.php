@@ -69,6 +69,12 @@
         'notes' => 'Las dimensiones y especificaciones pueden actualizarse sin previo aviso. Para selección, compatibilidad, disponibilidad o certificaciones, consulte indicando el código exacto del producto.',
         'footer' => 'Componentes para sistemas de control y condiciones de fluidos',
     ];
+    $characteristicColumns = collect($product->variantCharacteristicColumns());
+    $qualityValues = $product->variants->pluck('quality')->filter()->unique()->map($t)->join(' / ');
+    $columnLabel = static fn (array $column) => $en ? match ($column['key']) {
+        'tubo' => 'Tube', 'rosca' => 'Thread', 'calidad' => 'Quality',
+        'diametro_nominal_sch' => 'Nominal diameter/Sch', default => $t($column['label']),
+    } : $column['label'];
 @endphp
     <div class="header">
         @if($logo)<img src="{{ $logo }}" class="logo" alt="Fitinox">@endif
@@ -92,7 +98,7 @@
                     <tr><td class="fact-label">{{ $copy['category'] }}</td><td class="fact-value">{{ $t($product->category->name) }}</td></tr>
                     @if($product->sku)<tr><td class="fact-label">{{ $copy['sku'] }}</td><td class="fact-value">{{ $product->sku }}</td></tr>@endif
                     <tr><td class="fact-label">{{ $copy['variants'] }}</td><td class="fact-value">{{ $product->variants->count() }} {{ $copy['configurations'] }}</td></tr>
-                    <tr><td class="fact-label">{{ $copy['quality'] }}</td><td class="fact-value">{{ $product->variants->pluck('quality')->filter()->unique()->map($t)->join(' / ') ?: $copy['consult'] }}</td></tr>
+                    @if($qualityValues)<tr><td class="fact-label">{{ $copy['quality'] }}</td><td class="fact-value">{{ $qualityValues }}</td></tr>@endif
                 </table>
                 <p class="product-copy">{{ $t(strip_tags($product->summary ?: $product->description ?: $copy['description'])) }}</p>
                 <span class="tag">{{ $product->video_type ? $copy['available'] : $copy['media'] }}</span>
@@ -101,8 +107,8 @@
     </tr></table>
     <h2 class="section-title">{{ $copy['specifications'] }}</h2>
     <table class="specs">
-        <thead><tr><th style="width:28%">{{ $copy['code'] }}</th><th style="width:24%">{{ $copy['detail'] }}</th><th style="width:16%">{{ $copy['tube'] }}</th><th style="width:16%">{{ $copy['thread'] }}</th><th style="width:16%">{{ $copy['quality'] }}</th></tr></thead>
-        <tbody>@forelse($product->variants as $variant)<tr><td class="code">{{ $variant->code }}</td><td>{{ $t($variant->detail ?: $product->name) }}</td><td>{{ $variant->tube ?: '—' }}</td><td>{{ $variant->thread ?: '—' }}</td><td>{{ $variant->quality ? $t($variant->quality) : '—' }}</td></tr>@empty<tr><td colspan="5">{{ $copy['noVariants'] }}</td></tr>@endforelse</tbody>
+        <thead><tr><th>{{ $copy['code'] }}</th><th>{{ $copy['detail'] }}</th>@foreach($characteristicColumns as $column)<th>{{ $columnLabel($column) }}</th>@endforeach</tr></thead>
+        <tbody>@forelse($product->variants as $variant)<tr><td class="code">{{ $variant->code }}</td><td>{{ $t($variant->detail ?: $product->name) }}</td>@foreach($characteristicColumns as $column)<td>{{ $variant->characteristicValue($column['key']) ? $t($variant->characteristicValue($column['key'])) : '—' }}</td>@endforeach</tr>@empty<tr><td colspan="{{ 2 + $characteristicColumns->count() }}">{{ $copy['noVariants'] }}</td></tr>@endforelse</tbody>
     </table>
     <div class="notes">{{ $copy['notes'] }}</div>
     <div class="footer">

@@ -81,9 +81,9 @@
 
         <div class="grid content-start gap-[24px] sm:grid-cols-2 xl:grid-cols-3">
             @foreach($products as $product)
-            <a data-reveal-item href="{{ route('products.show',$product) }}" class="h-[350px] overflow-hidden rounded-[6px] border border-[#dedfe0] bg-white">
-                <div role="img" aria-label="{{ $product->name }}" class="h-[250px] w-full bg-contain bg-center bg-no-repeat" style="background-image: url('{{ Storage::url($product->main_image ?: 'products/product-placeholder.svg') }}');"></div>
-                <div class="px-[24px] pt-[3px]"><p class="text-[12px] leading-[18px] font-bold text-[#1954b7]">{{ mb_strtoupper($category->name) }}</p><h3 class="mt-[5px] text-[18px] leading-[27px] font-medium text-black">{{ $product->name }}</h3></div>
+            <a data-reveal-item href="{{ route('products.show',$product) }}" class="min-h-[380px] overflow-hidden rounded-[6px] border border-[#dedfe0] bg-white">
+                <div role="img" aria-label="{{ $product->name }}" class="aspect-square w-full bg-contain bg-center bg-no-repeat" style="background-image: url('{{ Storage::url($product->main_image ?: 'products/product-placeholder.svg') }}');"></div>
+                <div class="px-[24px] pt-[12px] pb-[20px]"><p class="text-[12px] leading-[18px] font-bold text-[#1954b7]">{{ mb_strtoupper($category->name) }}</p><h3 class="mt-[5px] text-[18px] leading-[27px] font-medium text-black">{{ $product->name }}</h3></div>
             </a>
             @endforeach
         </div>

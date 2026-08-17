@@ -58,6 +58,29 @@ class ProductSpreadsheetImporterTest extends TestCase
         $this->assertNull($product->video_path);
     }
 
+    public function test_it_imports_products_without_tube_or_thread_and_keeps_unlimited_characteristics(): void
+    {
+        $csv = implode("\n", [
+            'CATEGORIA;SUB CATEGORIA;CODIGO;DETALLE;DIAMETRO NOMINAL/SCH;CALIDAD;PRESION MAXIMA',
+            'Accesorios para caños;Caños;CA-SC44-04;Sin Costura ASTM A312;1/4" (13,17mm) Sch 40 (2,24mm);AISI 304/304L;1000 PSI',
+        ]);
+
+        app(ProductSpreadsheetImporter::class)->import(
+            UploadedFile::fake()->createWithContent('productos-dinamicos.csv', $csv)
+        );
+
+        $variant = ProductVariant::where('code', 'CA-SC44-04')->firstOrFail();
+        $this->assertNull($variant->tube);
+        $this->assertNull($variant->thread);
+        $this->assertSame('AISI 304/304L', $variant->quality);
+        $this->assertSame('1/4" (13,17mm) Sch 40 (2,24mm)', $variant->characteristicValue('diametro_nominal_sch'));
+        $this->assertSame('1000 PSI', $variant->characteristicValue('presion_maxima'));
+        $this->assertSame(
+            ['Diámetro nominal/Sch', 'Calidad', 'PRESION MAXIMA'],
+            collect($variant->technicalCharacteristics(false))->pluck('label')->values()->all()
+        );
+    }
+
     public function test_it_synchronizes_the_inventory_and_removes_absent_products_and_media(): void
     {
         Storage::fake('public');

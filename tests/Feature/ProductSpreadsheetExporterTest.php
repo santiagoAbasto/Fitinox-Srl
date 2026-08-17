@@ -53,6 +53,13 @@ class ProductSpreadsheetExporterTest extends TestCase
             'tube' => '1/8"',
             'thread' => '1/8"',
             'quality' => 'AISI 316',
+            'characteristics' => [
+                'tubo' => ['label' => 'Tubo', 'value' => '1/8"'],
+                'rosca' => ['label' => 'Rosca', 'value' => '1/8"'],
+                'diametro_nominal_sch' => ['label' => 'Diámetro nominal/Sch', 'value' => null],
+                'calidad' => ['label' => 'Calidad', 'value' => 'AISI 316'],
+                'presion_maxima' => ['label' => 'Presión máxima', 'value' => '1000 PSI'],
+            ],
             'list_price' => 14.69,
             'discount_percent' => 5,
             'final_price' => 13.96,
@@ -73,6 +80,9 @@ class ProductSpreadsheetExporterTest extends TestCase
         $this->assertStringContainsString('Pulgada', $sheet);
         $this->assertStringContainsString('1-Recto-Macho-F', $sheet);
         $this->assertStringContainsString('1-Recto-Macho-V', $sheet);
+        $this->assertStringContainsString('Diámetro nominal/Sch', $sheet);
+        $this->assertStringContainsString('Presión máxima', $sheet);
+        $this->assertStringContainsString('1000 PSI', $sheet);
 
         $report = app(ProductSpreadsheetImporter::class)->import(new UploadedFile(
             $path,
@@ -87,6 +97,7 @@ class ProductSpreadsheetExporterTest extends TestCase
         $variant = $product->variants()->firstOrFail();
         $this->assertSame(0.0, (float) $variant->discount_percent);
         $this->assertSame(14.69, (float) $variant->final_price);
+        $this->assertSame('1000 PSI', $variant->characteristicValue('presion_maxima'));
         @unlink($path);
     }
 }

@@ -27,14 +27,14 @@ class ProductSpreadsheetImporter
             ? $this->readCsv($file->getRealPath())
             : $this->readXlsx($file->getRealPath());
 
-        [$headers, $rows, $firstDataRow] = $this->extractTable($rows);
-        $required = ['codigo', 'detalle', 'tubo', 'rosca'];
+        [$headers, $headerLabels, $rows, $firstDataRow] = $this->extractTable($rows);
+        $required = ['codigo', 'detalle'];
         foreach ($required as $column) {
             if (!in_array($column, $headers, true)) throw new RuntimeException("Falta la columna obligatoria: {$column}.");
         }
 
         $filesToDelete = [];
-        $report = DB::transaction(function () use ($rows, $headers, $firstDataRow, $file, &$filesToDelete) {
+        $report = DB::transaction(function () use ($rows, $headers, $headerLabels, $firstDataRow, $file, &$filesToDelete) {
             $report = [
                 'file' => $file->getClientOriginalName(),
                 'processed' => 0, 'created' => 0, 'updated' => 0, 'unchanged' => 0, 'skipped' => 0,
@@ -138,6 +138,7 @@ class ProductSpreadsheetImporter
                     'tube' => $this->nullableString($data['tubo'] ?? null),
                     'thread' => $this->nullableString($data['rosca'] ?? null),
                     'quality' => $this->nullableString($data['calidad'] ?? null),
+                    'characteristics' => $this->characteristics($headers, $headerLabels, $data),
                     'list_price' => $this->decimal($data['precio_lista_us'] ?? $data['precio_lista'] ?? null),
                     'discount_percent' => 0,
                     'final_price' => $this->decimal($data['precio_lista_us'] ?? $data['precio_lista'] ?? null),
@@ -217,11 +218,13 @@ class ProductSpreadsheetImporter
         $hasUnitRow = blank($units[0] ?? null) && blank($units[1] ?? null)
             && collect($units)->filter(fn ($value) => filled($value))->isNotEmpty();
         $headers = [];
+        $headerLabels = [];
         foreach ($base as $column => $value) {
-            $header = $this->normalize((string) $value);
+            $label = trim((string) $value);
+            $header = $this->normalize($label);
             $unit = $hasUnitRow ? $this->normalize((string) ($units[$column] ?? '')) : '';
             if ($unit && !in_array($unit, ['porcentaje'], true)) $header .= '_'.$unit;
-            $headers[] = match ($header) {
+            $header = match ($header) {
                 'precio_lista_u_s', 'precio_lista_us' => 'precio_lista_us',
                 'precio_final_u_s', 'precio_final_us' => 'precio_final_us',
                 'stock_fisico' => 'stock_fisico',
@@ -229,10 +232,43 @@ class ProductSpreadsheetImporter
                 'cantidad_solicitada' => 'cantidad_solicitada',
                 default => $header,
             };
+            if ($header === '') $header = '__ignorar_'.$column;
+            $headers[] = $header;
+            $headerLabels[$header] = $this->characteristicLabel($header, $label);
         }
         $dataIndex = $headerIndex + ($hasUnitRow ? 2 : 1);
 
-        return [$headers, array_slice($rows, $dataIndex), $dataIndex + 1];
+        return [$headers, $headerLabels, array_slice($rows, $dataIndex), $dataIndex + 1];
+    }
+
+    private function characteristics(array $headers, array $labels, array $data): array
+    {
+        $metadata = [
+            'categoria', 'sub_categoria', 'subcategoria', 'sub_sub_categoria', 'codigo', 'detalle',
+            'foto', 'video', 'precio_lista', 'precio_lista_us', 'descuento', 'porcentaje_descuento',
+            'precio_final', 'precio_final_us', 'stock_fisico', 'stock_en_transito', 'cantidad_solicitada',
+        ];
+        $characteristics = [];
+        foreach ($headers as $header) {
+            if (str_starts_with($header, '__ignorar_') || in_array($header, $metadata, true)) continue;
+            $characteristics[$header] = [
+                'label' => $labels[$header] ?? $this->characteristicLabel($header, ''),
+                'value' => $this->nullableString($data[$header] ?? null),
+            ];
+        }
+
+        return $characteristics;
+    }
+
+    private function characteristicLabel(string $header, string $original): string
+    {
+        return match ($header) {
+            'tubo' => 'Tubo',
+            'rosca' => 'Rosca',
+            'diametro_nominal_sch' => 'Diámetro nominal/Sch',
+            'calidad' => 'Calidad',
+            default => trim($original) ?: Str::of($header)->replace('_', ' ')->title()->toString(),
+        };
     }
 
     private function readCsv(string $path): array

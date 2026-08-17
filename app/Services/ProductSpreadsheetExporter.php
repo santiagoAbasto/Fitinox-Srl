@@ -15,6 +15,13 @@ class ProductSpreadsheetExporter
 
     private const NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 
+    private const STANDARD_CHARACTERISTICS = [
+        'tubo' => 'Tubo',
+        'rosca' => 'Rosca',
+        'diametro_nominal_sch' => 'Diámetro nominal/Sch',
+        'calidad' => 'Calidad',
+    ];
+
     public function export(): string
     {
         $template = storage_path(self::TEMPLATE);
@@ -42,8 +49,9 @@ class ProductSpreadsheetExporter
             $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
             if ($sheetXml === false) throw new RuntimeException('La plantilla no contiene la hoja de importación.');
 
-            $rows = $this->rows();
-            $updated = $this->populateSheet($sheetXml, $rows);
+            $characteristics = $this->characteristicColumns();
+            $rows = $this->rows($characteristics);
+            $updated = $this->populateSheet($sheetXml, $rows, $characteristics);
             $zip->addFromString('xl/worksheets/sheet1.xml', $updated);
         } finally {
             $zip->close();
@@ -52,7 +60,22 @@ class ProductSpreadsheetExporter
         return $path;
     }
 
-    private function rows(): array
+    private function characteristicColumns(): array
+    {
+        $columns = self::STANDARD_CHARACTERISTICS;
+        Product::query()->with('variants')->orderBy('sort_order')->orderBy('id')->get()
+            ->each(function (Product $product) use (&$columns) {
+                foreach ($product->variants as $variant) {
+                    foreach ($variant->technicalCharacteristics() as $characteristic) {
+                        $columns[$characteristic['key']] ??= $characteristic['label'];
+                    }
+                }
+            });
+
+        return $columns;
+    }
+
+    private function rows(array $characteristicColumns): array
     {
         return Product::query()
             ->with([
@@ -62,7 +85,7 @@ class ProductSpreadsheetExporter
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get()
-            ->flatMap(function (Product $product) {
+            ->flatMap(function (Product $product) use ($characteristicColumns) {
                 $category = $product->category;
                 $parent = $category?->parent;
                 $grandparent = $parent?->parent;
@@ -79,9 +102,9 @@ class ProductSpreadsheetExporter
                     'category' => $grandparent?->name ?: $parent?->name ?: $category?->name ?: '',
                     'subcategory' => $grandparent ? $parent->name : ($parent ? $category->name : ''),
                     'third_category' => $grandparent ? $category->name : '',
-                    'tube' => $variant->tube,
-                    'thread' => $variant->thread,
-                    'quality' => $variant->quality,
+                    'characteristics' => collect($characteristicColumns)
+                        ->mapWithKeys(fn ($label, $key) => [$key => $variant->characteristicValue($key)])
+                        ->all(),
                     'photo' => $photo,
                     'video' => $video,
                     'list_price' => $variant->list_price,
@@ -93,7 +116,7 @@ class ProductSpreadsheetExporter
             ->all();
     }
 
-    private function populateSheet(string $xml, array $data): string
+    private function populateSheet(string $xml, array $data, array $characteristicColumns): string
     {
         $document = new DOMDocument('1.0', 'UTF-8');
         $document->preserveWhiteSpace = false;
@@ -108,6 +131,23 @@ class ProductSpreadsheetExporter
             throw new RuntimeException('La estructura de la plantilla no es válida.');
         }
 
+        $headers = [
+            'Categoría', 'Sub categoría', 'Sub sub categoría', 'Código', 'Detalle',
+            ...array_values($characteristicColumns),
+            'Foto', 'Video', 'Precio lista u$s', 'Stock físico', 'Stock en tránsito',
+        ];
+        $lastColumnNumber = count($headers);
+        $lastColumn = $this->columnName($lastColumnNumber);
+        $headerRow = $xpath->query('//x:sheetData/x:row[@r="1"]')->item(0);
+        if (!$headerRow instanceof DOMElement) throw new RuntimeException('La plantilla no contiene encabezados.');
+        foreach ($headers as $index => $header) {
+            $this->writeText($document, $headerRow, $this->columnName($index + 1), 1, $header, 1);
+        }
+
+        $dimension = $xpath->query('//x:dimension')->item(0);
+        if ($dimension instanceof DOMElement) $dimension->setAttribute('ref', "A1:{$lastColumn}".max(315, count($data) + 50));
+        $this->configureColumns($document, $xpath, $headers);
+
         $lastRow = max(315, count($data) + 50);
         for ($number = 2; $number <= $lastRow; $number++) {
             $row = $xpath->query("//x:sheetData/x:row[@r=\"{$number}\"]")->item(0);
@@ -119,21 +159,23 @@ class ProductSpreadsheetExporter
 
             $record = $data[$number - 2] ?? null;
             if ($record) {
-                $this->writeText($document, $row, 'A', $number, $record['category']);
-                $this->writeText($document, $row, 'B', $number, $record['subcategory']);
-                $this->writeText($document, $row, 'C', $number, $record['third_category']);
-                $this->writeText($document, $row, 'D', $number, $record['code']);
-                $this->writeText($document, $row, 'E', $number, $record['detail']);
-                $this->writeText($document, $row, 'F', $number, $record['tube']);
-                $this->writeText($document, $row, 'G', $number, $record['thread']);
-                $this->writeText($document, $row, 'H', $number, $record['quality']);
-                $this->writeText($document, $row, 'I', $number, $record['photo']);
-                $this->writeText($document, $row, 'J', $number, $record['video']);
-                $this->writeNumber($document, $row, 'K', $number, $record['list_price']);
-                $this->writeNumber($document, $row, 'L', $number, $record['physical_stock']);
-                $this->writeNumber($document, $row, 'M', $number, $record['transit_stock']);
+                $values = [
+                    $record['category'], $record['subcategory'], $record['third_category'], $record['code'], $record['detail'],
+                    ...array_map(fn ($key) => $record['characteristics'][$key] ?? null, array_keys($characteristicColumns)),
+                    $record['photo'], $record['video'],
+                ];
+                foreach ($values as $index => $value) {
+                    $this->writeText($document, $row, $this->columnName($index + 1), $number, $value, $index % 2 === 0 ? 2 : 3);
+                }
+                $numericStart = count($values) + 1;
+                $this->writeNumber($document, $row, $this->columnName($numericStart), $number, $record['list_price'], 4);
+                $this->writeNumber($document, $row, $this->columnName($numericStart + 1), $number, $record['physical_stock'], 5);
+                $this->writeNumber($document, $row, $this->columnName($numericStart + 2), $number, $record['transit_stock'], 6);
             } else {
-                foreach (range('A', 'M') as $column) $this->clearCell($row, $column, $number);
+                for ($column = 1; $column <= $lastColumnNumber; $column++) {
+                    $style = $column > $lastColumnNumber - 3 ? 3 + ($column - ($lastColumnNumber - 3)) : ($column % 2 === 1 ? 2 : 3);
+                    $this->clearCell($document, $row, $this->columnName($column), $number, $style);
+                }
             }
         }
 
@@ -148,6 +190,43 @@ class ProductSpreadsheetExporter
         return $document->saveXML();
     }
 
+    private function configureColumns(DOMDocument $document, DOMXPath $xpath, array $headers): void
+    {
+        $columns = $xpath->query('//x:cols')->item(0);
+        if (!$columns instanceof DOMElement) return;
+        while ($columns->firstChild) $columns->removeChild($columns->firstChild);
+        foreach ($headers as $index => $header) {
+            $width = match ($index) {
+                0, 1, 2 => 24,
+                3 => 20,
+                4 => 28,
+                default => match ($header) {
+                    'Foto', 'Video' => 24,
+                    'Precio lista u$s' => 17,
+                    'Stock físico', 'Stock en tránsito' => 16,
+                    default => min(28, max(14, mb_strlen($header) + 4)),
+                },
+            };
+            $column = $document->createElementNS(self::NS, 'col');
+            $column->setAttribute('min', (string) ($index + 1));
+            $column->setAttribute('max', (string) ($index + 1));
+            $column->setAttribute('customWidth', 'true');
+            $column->setAttribute('width', (string) $width);
+            $columns->appendChild($column);
+        }
+    }
+
+    private function columnName(int $number): string
+    {
+        $name = '';
+        while ($number > 0) {
+            $number--;
+            $name = chr(65 + ($number % 26)).$name;
+            $number = intdiv($number, 26);
+        }
+        return $name;
+    }
+
     private function renumberRow(DOMElement $row, int $number): void
     {
         $row->setAttribute('r', (string) $number);
@@ -157,31 +236,32 @@ class ProductSpreadsheetExporter
         }
     }
 
-    private function cell(DOMDocument $document, DOMElement $row, string $column, int $number): DOMElement
+    private function cell(DOMDocument $document, DOMElement $row, string $column, int $number, ?int $style = null): DOMElement
     {
         foreach ($row->getElementsByTagNameNS(self::NS, 'c') as $cell) {
-            if ($cell->getAttribute('r') === $column.$number) return $cell;
+            if ($cell->getAttribute('r') === $column.$number) {
+                if ($style !== null) $cell->setAttribute('s', (string) $style);
+                return $cell;
+            }
         }
 
         $cell = $document->createElementNS(self::NS, 'c');
         $cell->setAttribute('r', $column.$number);
+        if ($style !== null) $cell->setAttribute('s', (string) $style);
         $row->appendChild($cell);
         return $cell;
     }
 
-    private function clearCell(DOMElement $row, string $column, int $number): void
+    private function clearCell(DOMDocument $document, DOMElement $row, string $column, int $number, ?int $style = null): void
     {
-        foreach ($row->getElementsByTagNameNS(self::NS, 'c') as $cell) {
-            if ($cell->getAttribute('r') !== $column.$number) continue;
-            while ($cell->firstChild) $cell->removeChild($cell->firstChild);
-            $cell->removeAttribute('t');
-            return;
-        }
+        $cell = $this->cell($document, $row, $column, $number, $style);
+        while ($cell->firstChild) $cell->removeChild($cell->firstChild);
+        $cell->removeAttribute('t');
     }
 
-    private function writeText(DOMDocument $document, DOMElement $row, string $column, int $number, mixed $value): void
+    private function writeText(DOMDocument $document, DOMElement $row, string $column, int $number, mixed $value, ?int $style = null): void
     {
-        $cell = $this->cell($document, $row, $column, $number);
+        $cell = $this->cell($document, $row, $column, $number, $style);
         while ($cell->firstChild) $cell->removeChild($cell->firstChild);
         $cell->setAttribute('t', 'inlineStr');
         $inline = $document->createElementNS(self::NS, 'is');
@@ -191,9 +271,9 @@ class ProductSpreadsheetExporter
         $cell->appendChild($inline);
     }
 
-    private function writeNumber(DOMDocument $document, DOMElement $row, string $column, int $number, mixed $value): void
+    private function writeNumber(DOMDocument $document, DOMElement $row, string $column, int $number, mixed $value, ?int $style = null): void
     {
-        $cell = $this->cell($document, $row, $column, $number);
+        $cell = $this->cell($document, $row, $column, $number, $style);
         while ($cell->firstChild) $cell->removeChild($cell->firstChild);
         $cell->removeAttribute('t');
         if ($value !== null && $value !== '') {

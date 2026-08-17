@@ -23,6 +23,23 @@ class Product extends Model
         return $this->hasMany(ProductVariant::class)->orderBy('sort_order')->orderBy('id');
     }
 
+    public function variantCharacteristicColumns(): array
+    {
+        $columns = [];
+        foreach ($this->variants as $variant) {
+            foreach ($variant->technicalCharacteristics() as $characteristic) {
+                $columns[$characteristic['key']] ??= [
+                    'key' => $characteristic['key'],
+                    'label' => $characteristic['label'],
+                ];
+            }
+        }
+
+        return array_values(array_filter($columns, fn (array $column) => $this->variants->contains(
+            fn (ProductVariant $variant) => filled($variant->characteristicValue($column['key']))
+        )));
+    }
+
     public function relatedProducts()
     {
         return $this->belongsToMany(self::class, 'product_related', 'product_id', 'related_product_id')

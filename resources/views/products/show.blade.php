@@ -40,18 +40,32 @@
         </div>
         <div class="relative min-w-0 min-[1224px]:h-[496px]"><p class="text-[12px] font-bold text-[#1954b7]">{{ mb_strtoupper($product->category->name) }}</p><h1 class="mt-4 border-b border-[#dedfe0] pb-4 text-[30px] leading-[1.2] font-medium text-fitinox sm:text-[32px] min-[1224px]:mt-[25px] min-[1224px]:leading-[38px]">{{ $product->name }}</h1>@if($product->description)<div class="mt-5 max-h-none overflow-visible pr-0 text-[16px] leading-[1.6] min-[1224px]:mt-6 min-[1224px]:max-h-[300px] min-[1224px]:overflow-y-auto min-[1224px]:pr-2">{!! $product->description !!}</div>@endif<a href="{{ route('products.datasheet', $product) }}" target="_blank" class="mt-8 inline-flex min-h-12 w-full items-center justify-center rounded-[7px] border border-fitinox bg-white px-5 text-[13px] font-medium tracking-[.03em] text-fitinox transition hover:bg-[#edf3f7] min-[1224px]:absolute min-[1224px]:bottom-0 min-[1224px]:left-0 min-[1224px]:mt-0 min-[1224px]:h-[36px] min-[1224px]:min-h-0 min-[1224px]:w-[280px]">FICHA TÉCNICA</a></div>
     </section>
+    @php
+        $characteristicColumns = collect($product->variantCharacteristicColumns());
+        $splitVariantTables = $characteristicColumns->count() <= 3;
+        $variantGroups = $splitVariantTables
+            ? $product->variants->chunk(max(1, (int) ceil($product->variants->count() / 2)))
+            : collect([$product->variants]);
+    @endphp
     <section data-reveal class="mt-14 sm:mt-16 min-[1224px]:mt-[80px]"><h2 class="border-b border-[#dedfe0] pb-4 text-[28px] leading-[1.2] font-medium text-fitinox sm:text-[32px] sm:leading-[38px]">Especificaciones técnicas</h2>
-        <div class="mt-6 grid gap-6 min-[1224px]:mt-[20px] min-[1224px]:grid-cols-2 min-[1224px]:gap-x-[24px]">
-            @foreach($product->variants->chunk((int) ceil($product->variants->count() / 2)) as $chunk)
-            <table class="product-variants-table w-full text-[16px] leading-[24px] text-[#35363a] min-[768px]:table-fixed">
-                <colgroup><col class="w-[27%]"><col class="w-[22%]"><col class="w-[31%]"><col class="w-[20%]"></colgroup>
-                <thead><tr class="h-[50px] border-b border-[#dedfe0] text-left text-[16px] font-semibold text-fitinox"><th class="px-[12px]">Tubo</th><th>Rosca</th><th>Código</th><th></th></tr></thead>
-                <tbody>@foreach($chunk as $variant)<tr class="border border-[#dedfe0] bg-white min-[768px]:h-[50px] min-[768px]:border-x-0 min-[768px]:border-t-0 min-[768px]:odd:bg-[#f5f5f5]"><td data-label="Tubo" class="variant-cell min-[768px]:px-[12px]">{{ $variant->tube }}</td><td data-label="Rosca" class="variant-cell">{{ $variant->thread }}</td><td data-label="Código" class="variant-cell min-[768px]:whitespace-nowrap">{{ $variant->code }}</td><td class="variant-action min-[768px]:pr-[12px] min-[768px]:text-right"><a href="{{ route('quote.index', ['variant' => $variant->id, 'quantity' => 1]) }}" class="inline-flex min-h-11 w-full items-center justify-center rounded-[7px] border border-fitinox px-5 text-[13px] font-medium tracking-[.03em] text-fitinox transition hover:bg-[#edf3f7] min-[768px]:h-[36px] min-[768px]:min-h-0 min-[768px]:w-[108px]">CONSULTAR</a></td></tr>@endforeach</tbody>
-            </table>
+        <div @class(['mt-6 grid gap-6 min-[1224px]:mt-[20px] min-[1224px]:gap-x-[24px]', 'min-[1224px]:grid-cols-2' => $splitVariantTables])>
+            @foreach($variantGroups as $chunk)
+            <div class="overflow-x-auto">
+                <table class="product-variants-table w-full text-[16px] leading-[24px] text-[#35363a] min-[768px]:table-auto" style="--variant-columns: 2; min-width: {{ $splitVariantTables ? 0 : max(760, 330 + ($characteristicColumns->count() * 150)) }}px">
+                    <thead><tr class="h-[50px] border-b border-[#dedfe0] text-left text-[16px] font-semibold text-fitinox">
+                        @foreach($characteristicColumns as $column)<th class="px-[12px]">{{ $column['label'] }}</th>@endforeach
+                        <th class="px-[12px]">Código</th><th class="w-[132px]"></th>
+                    </tr></thead>
+                    <tbody>@foreach($chunk as $variant)<tr class="border border-[#dedfe0] bg-white min-[768px]:h-[50px] min-[768px]:border-x-0 min-[768px]:border-t-0 min-[768px]:odd:bg-[#f5f5f5]">
+                        @foreach($characteristicColumns as $column)<td data-label="{{ $column['label'] }}" class="variant-cell min-[768px]:px-[12px]">{{ $variant->characteristicValue($column['key']) ?: '—' }}</td>@endforeach
+                        <td data-label="Código" class="variant-cell min-[768px]:whitespace-nowrap min-[768px]:px-[12px]">{{ $variant->code }}</td><td class="variant-action min-[768px]:pr-[12px] min-[768px]:text-right"><a href="{{ route('quote.index', ['variant' => $variant->id, 'quantity' => 1]) }}" class="inline-flex min-h-11 w-full items-center justify-center rounded-[7px] border border-fitinox px-5 text-[13px] font-medium tracking-[.03em] text-fitinox transition hover:bg-[#edf3f7] min-[768px]:h-[36px] min-[768px]:min-h-0 min-[768px]:w-[108px]">CONSULTAR</a></td>
+                    </tr>@endforeach</tbody>
+                </table>
+            </div>
             @endforeach
         </div>
     </section>
-    @if($related->isNotEmpty())<section data-reveal class="py-[80px]"><h2 class="text-[32px] font-medium text-fitinox">Productos relacionados</h2><div class="mt-[32px] grid gap-[24px] sm:grid-cols-2 lg:grid-cols-4">@foreach($related as $item)<a href="{{ route('products.show',$item) }}" class="h-[350px] overflow-hidden rounded-[6px] border border-[#dedfe0] bg-white"><div role="img" aria-label="{{ $item->name }}" class="h-[250px] w-full bg-contain bg-center bg-no-repeat" style="background-image: url('{{ Storage::url($item->main_image ?: 'products/product-placeholder.svg') }}');"></div><div class="px-6 pt-3"><p class="text-[12px] font-bold text-[#1954b7]">{{ mb_strtoupper($item->category->name) }}</p><h3 class="mt-2 text-[18px] font-medium">{{ $item->name }}</h3></div></a>@endforeach</div></section>@endif
+    @if($related->isNotEmpty())<section data-reveal class="py-[80px]"><h2 class="text-[32px] font-medium text-fitinox">Productos relacionados</h2><div class="mt-[32px] grid gap-[24px] sm:grid-cols-2 lg:grid-cols-4">@foreach($related as $item)<a href="{{ route('products.show',$item) }}" class="min-h-[380px] overflow-hidden rounded-[6px] border border-[#dedfe0] bg-white"><div role="img" aria-label="{{ $item->name }}" class="aspect-square w-full bg-contain bg-center bg-no-repeat" style="background-image: url('{{ Storage::url($item->main_image ?: 'products/product-placeholder.svg') }}');"></div><div class="px-6 pt-3 pb-5"><p class="text-[12px] font-bold text-[#1954b7]">{{ mb_strtoupper($item->category->name) }}</p><h3 class="mt-2 text-[18px] font-medium">{{ $item->name }}</h3></div></a>@endforeach</div></section>@endif
 </div>
 
 <script>

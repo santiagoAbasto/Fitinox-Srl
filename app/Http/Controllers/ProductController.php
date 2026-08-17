@@ -36,7 +36,7 @@ class ProductController extends Controller
             ->with([
                 'category:id,name,slug',
                 'variants' => fn ($variants) => $variants->where('is_active', true)->select([
-                    'id', 'product_id', 'code', 'detail', 'tube', 'thread', 'quality',
+                    'id', 'product_id', 'code', 'detail', 'tube', 'thread', 'quality', 'characteristics',
                 ]),
             ])
             ->where(function ($builder) use ($tokens) {
@@ -54,7 +54,8 @@ class ProductController extends Controller
                                     ->orWhereRaw('LOWER(COALESCE(detail, \'\')) LIKE ?', [$like])
                                     ->orWhereRaw('LOWER(COALESCE(tube, \'\')) LIKE ?', [$like])
                                     ->orWhereRaw('LOWER(COALESCE(thread, \'\')) LIKE ?', [$like])
-                                    ->orWhereRaw('LOWER(COALESCE(quality, \'\')) LIKE ?', [$like]);
+                                    ->orWhereRaw('LOWER(COALESCE(quality, \'\')) LIKE ?', [$like])
+                                    ->orWhere('characteristics', 'like', $like);
                             }));
                 }
             })
@@ -70,7 +71,7 @@ class ProductController extends Controller
                     json_encode($product->technical_data),
                 ]));
                 $variantText = $this->normalizeSearchText($product->variants->map(fn ($variant) => implode(' ', [
-                    $variant->code, $variant->detail, $variant->tube, $variant->thread, $variant->quality,
+                    $variant->code, $variant->detail, $variant->tube, $variant->thread, $variant->quality, json_encode($variant->characteristics),
                 ]))->implode(' '));
 
                 $score = 0;
@@ -190,6 +191,8 @@ class ProductController extends Controller
             $product->description,
             ...$product->variants->pluck('detail')->all(),
             ...$product->variants->pluck('quality')->all(),
+            ...$product->variants->flatMap(fn ($variant) => collect($variant->technicalCharacteristics())
+                ->flatMap(fn ($characteristic) => [$characteristic['label'], $characteristic['value']]))->all(),
         ], $locale);
         $options = new Options();
         $options->set('defaultFont', 'DejaVu Sans');

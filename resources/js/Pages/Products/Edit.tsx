@@ -17,8 +17,16 @@ function UploadField({ title, hint, accept, multiple=false, onChange, name }: an
 
 const emptyVariant = (sortOrder = 0) => ({
     code: '', detail: '', tube: '', thread: '', quality: '', list_price: '',
-    physical_stock: '', transit_stock: '', sort_order: sortOrder, is_active: true,
+    physical_stock: '', transit_stock: '', sort_order: sortOrder, is_active: true, characteristics: [],
 });
+
+function editableCharacteristics(value: any) {
+    if (!value) return [];
+    const entries = Array.isArray(value) ? value : Object.entries(value).map(([key, item]: any) => ({ key, ...(typeof item === 'object' ? item : { value: item }) }));
+    return entries
+        .filter((item: any) => !['tubo', 'rosca', 'calidad'].includes(item.key))
+        .map((item: any) => ({ key: item.key || '', label: item.label || '', value: item.value ?? '' }));
+}
 
 function VariantFields({ data, setData, errors }: any) {
     const inputs = [
@@ -27,6 +35,9 @@ function VariantFields({ data, setData, errors }: any) {
         ['list_price', 'Precio lista U$S', '0.00'], ['physical_stock', 'Stock físico', '0'],
         ['transit_stock', 'Stock en tránsito', '0'], ['sort_order', 'Orden interno', '0'],
     ];
+    const characteristics = Array.isArray(data.characteristics) ? data.characteristics : [];
+    const updateCharacteristic = (index: number, key: string, value: string) => setData('characteristics', characteristics.map((item: any, itemIndex: number) => itemIndex === index ? { ...item, [key]: value } : item));
+    const removeCharacteristic = (index: number) => setData('characteristics', characteristics.filter((_: any, itemIndex: number) => itemIndex !== index));
     return <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {inputs.map(([name, text, placeholder]) => <label key={name}>
             <span className={label}>{text}</span>
@@ -41,6 +52,15 @@ function VariantFields({ data, setData, errors }: any) {
             />
             {errors[name] && <small className="mt-1 block text-[10px] text-red-600">{errors[name]}</small>}
         </label>)}
+        <div className="rounded-xl border border-[#dfe5e8] bg-white p-4 md:col-span-2 xl:col-span-3">
+            <div className="flex flex-wrap items-start justify-between gap-3"><div><strong className="block text-[12px] text-[#263b45]">Otras características técnicas</strong><small className="mt-1 block text-[10px] leading-4 text-[#7a878e]">Agregá las que necesite este código, por ejemplo Diámetro nominal/Sch, presión o material.</small></div><button type="button" onClick={() => setData('characteristics', [...characteristics, { key: '', label: '', value: '' }])} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#9fb9d9] px-3 text-[10px] font-semibold text-[#1954b7] hover:bg-[#edf3ff]"><Plus size={14}/> AGREGAR CAMPO</button></div>
+            {characteristics.length > 0 && <div className="mt-4 space-y-3">{characteristics.map((item: any, index: number) => <div key={`${item.key}-${index}`} className="grid gap-3 rounded-xl bg-[#f8fafb] p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_40px]">
+                <label><span className={label}>Nombre de la característica</span><input className={smallField} placeholder="Diámetro nominal/Sch" value={item.label || ''} onChange={event => updateCharacteristic(index, 'label', event.target.value)}/></label>
+                <label><span className={label}>Valor</span><input className={smallField} placeholder={'1/2” (21,30 mm) Sch 10'} value={item.value || ''} onChange={event => updateCharacteristic(index, 'value', event.target.value)}/></label>
+                <button type="button" aria-label="Eliminar característica" onClick={() => removeCharacteristic(index)} className="mt-[26px] grid size-10 place-items-center rounded-lg border border-red-100 text-red-600 hover:bg-red-50"><Trash2 size={15}/></button>
+                {errors[`characteristics.${index}.label`] && <small className="text-[10px] text-red-600 md:col-span-3">{errors[`characteristics.${index}.label`]}</small>}
+            </div>)}</div>}
+        </div>
         <label className="flex min-h-11 cursor-pointer items-center justify-between self-end rounded-xl bg-[#f4f8fa] px-4 text-[12px]">
             <span><strong className="block text-[#263b45]">Visible públicamente</strong><small className="text-[10px] text-[#7a878e]">Aparece en la ficha y PDF.</small></span>
             <span className={`relative h-6 w-11 rounded-full ${data.is_active ? 'bg-[#1954b7]' : 'bg-[#c9d1d5]'}`}>
@@ -74,6 +94,7 @@ function VariantEditor({ variant, productId }: any) {
         code: variant.code || '', detail: variant.detail || '', tube: variant.tube || '', thread: variant.thread || '',
         quality: variant.quality || '', list_price: variant.list_price ?? '', physical_stock: variant.physical_stock ?? '',
         transit_stock: variant.transit_stock ?? '', sort_order: variant.sort_order ?? 0, is_active: !!variant.is_active,
+        characteristics: editableCharacteristics(variant.characteristics),
     });
     const save = () => form.put(`/admin/products/${productId}/variants/${variant.id}`, { preserveScroll: true });
     const remove = () => {
@@ -161,7 +182,7 @@ export default function Edit({ product, categories, relatedCandidates }: any) {
                 </div></section>
                 <section className="overflow-hidden rounded-2xl border border-[#dfe5e8] bg-white"><header className="flex items-center gap-3 border-b border-[#edf0f2] px-6 py-5"><Play size={18} className="text-[#1954b7]"/><div><h2 className="text-[14px] font-semibold text-[#132b3b]">Video del producto · 360°</h2><p className="mt-1 text-[10px] text-[#7a878e]">Cada producto puede tener su propio MP4/WebM o video de YouTube.</p></div></header><div className="p-6">
                     <div className="mb-5 grid grid-cols-3 gap-3">{[['','Sin video'],['upload','Archivo'],['youtube','YouTube']].map(([value,text])=><button key={value} type="button" onClick={()=>form.setData('video_type',value)} className={`min-h-12 rounded-xl border text-[12px] font-semibold transition ${form.data.video_type===value?'border-[#1954b7] bg-[#edf3ff] text-[#1954b7]':'border-[#dfe5e8] text-[#718087] hover:bg-[#f8fafb]'}`}>{text}</button>)}</div>
-                    {form.data.video_type==='upload'&&<><UploadField title="Seleccionar video" name={form.data.video_file?.name} hint="Recomendado: 1920 × 1080 px (16:9) · MP4/WebM/MOV · máximo 100 MB" accept="video/mp4,video/webm,video/quicktime" onChange={(e:any)=>form.setData('video_file',e.target.files?.[0]||null)}/>{videoPreview&&<><video className="mt-4 aspect-video w-full rounded-xl bg-[#07131b] object-contain" controls src={videoPreview} onLoadedMetadata={event=>setVideoDimensions(`${event.currentTarget.videoWidth} × ${event.currentTarget.videoHeight} px · ${Math.round(event.currentTarget.duration)} s`)}/><p className="mt-2 text-[10px] text-[#7a878e]"><strong>Archivo actual:</strong> {videoDimensions || 'leyendo dimensiones…'}</p></>}</>}
+                    {form.data.video_type==='upload'&&<><UploadField title="Seleccionar video" name={form.data.video_file?.name} hint="Recomendado: 496 × 496 px (1:1) · MP4/WebM/MOV · máximo 100 MB" accept="video/mp4,video/webm,video/quicktime" onChange={(e:any)=>form.setData('video_file',e.target.files?.[0]||null)}/>{videoPreview&&<><video className="mt-4 aspect-square w-full rounded-xl bg-[#07131b] object-contain" controls src={videoPreview} onLoadedMetadata={event=>setVideoDimensions(`${event.currentTarget.videoWidth} × ${event.currentTarget.videoHeight} px · ${Math.round(event.currentTarget.duration)} s`)}/><p className="mt-2 text-[10px] text-[#7a878e]"><strong>Archivo actual:</strong> {videoDimensions || 'leyendo dimensiones…'}</p></>}</>}
                     {form.data.video_type==='youtube'&&<label><span className={label}>URL embebida de YouTube</span><input className={field} placeholder="https://www.youtube.com/embed/..." value={form.data.youtube_url} onChange={e=>form.setData('youtube_url',e.target.value)}/></label>}
                 </div></section>
                 <section id="codigos" className="scroll-mt-24 overflow-hidden rounded-2xl border border-[#dfe5e8] bg-white">
@@ -179,8 +200,8 @@ export default function Edit({ product, categories, relatedCandidates }: any) {
                 <RelatedProductsEditor product={product} candidates={relatedCandidates || []}/>
             </div>
             <aside className="space-y-6">
-                <section className="overflow-hidden rounded-2xl border border-[#dfe5e8] bg-white"><header className="flex items-center gap-3 border-b border-[#edf0f2] px-5 py-4"><Image size={17} className="text-[#1954b7]"/><h2 className="text-[13px] font-semibold text-[#132b3b]">Imagen principal</h2></header><div className="p-5"><div className="mb-4 flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-[#f5f7f8]"><img src={imagePreview} className="max-h-full max-w-full object-contain" alt="Vista previa" onLoad={event=>setImageDimensions(`${event.currentTarget.naturalWidth} × ${event.currentTarget.naturalHeight} px`)}/></div><UploadField title="Reemplazar imagen" name={form.data.main_image_file?.name} hint="Recomendado: 1200 × 1200 px (1:1) · JPG, PNG o WebP · máximo 5 MB" accept="image/jpeg,image/png,image/webp" onChange={(e:any)=>form.setData('main_image_file',e.target.files?.[0]||null)}/><p className="mt-2 text-[10px] text-[#7a878e]"><strong>Imagen actual:</strong> {imageDimensions || 'leyendo dimensiones…'}</p></div></section>
-                <section className="rounded-2xl border border-[#dfe5e8] bg-white p-5"><h2 className="text-[13px] font-semibold text-[#132b3b]">Galería</h2><p className="mt-1 text-[10px] leading-4 text-[#7a878e]">Hasta 8 imágenes. Recomendado: 1200 × 1200 px (1:1). JPG, PNG o WebP · máximo 5 MB cada una.</p><div className="mt-4"><UploadField title="Agregar imágenes" name={form.data.gallery_files.length ? `${form.data.gallery_files.length} imágenes seleccionadas` : undefined} hint="Selección múltiple · se agregan a la galería actual" accept="image/jpeg,image/png,image/webp" multiple onChange={(e:any)=>form.setData('gallery_files',Array.from(e.target.files||[]))}/></div></section>
+                <section className="overflow-hidden rounded-2xl border border-[#dfe5e8] bg-white"><header className="flex items-center gap-3 border-b border-[#edf0f2] px-5 py-4"><Image size={17} className="text-[#1954b7]"/><h2 className="text-[13px] font-semibold text-[#132b3b]">Imagen principal</h2></header><div className="p-5"><div className="mb-4 flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-[#f5f7f8]"><img src={imagePreview} className="max-h-full max-w-full object-contain" alt="Vista previa" onLoad={event=>setImageDimensions(`${event.currentTarget.naturalWidth} × ${event.currentTarget.naturalHeight} px`)}/></div><UploadField title="Reemplazar imagen" name={form.data.main_image_file?.name} hint="Recomendado: 496 × 496 px (1:1) · JPG, PNG o WebP · máximo 5 MB" accept="image/jpeg,image/png,image/webp" onChange={(e:any)=>form.setData('main_image_file',e.target.files?.[0]||null)}/><p className="mt-2 text-[10px] text-[#7a878e]"><strong>Imagen actual:</strong> {imageDimensions || 'leyendo dimensiones…'}</p></div></section>
+                <section className="rounded-2xl border border-[#dfe5e8] bg-white p-5"><h2 className="text-[13px] font-semibold text-[#132b3b]">Galería</h2><p className="mt-1 text-[10px] leading-4 text-[#7a878e]">Hasta 8 imágenes. Recomendado: 496 × 496 px (1:1). JPG, PNG o WebP · máximo 5 MB cada una.</p><div className="mt-4"><UploadField title="Agregar imágenes" name={form.data.gallery_files.length ? `${form.data.gallery_files.length} imágenes seleccionadas` : undefined} hint="Selección múltiple · se agregan a la galería actual" accept="image/jpeg,image/png,image/webp" multiple onChange={(e:any)=>form.setData('gallery_files',Array.from(e.target.files||[]))}/></div></section>
                 <section className="rounded-2xl border border-[#dfe5e8] bg-white p-5"><h2 className="text-[13px] font-semibold text-[#132b3b]">Publicación</h2><label className="mt-4 flex min-h-14 cursor-pointer items-center justify-between rounded-xl bg-[#f8fafb] px-4 text-[12px]"><span><strong className="block">Visible en la web</strong><small className="mt-1 block text-[10px] text-[#7a878e]">Si se desactiva, no podrá abrirse en el sitio público.</small></span><span className={`relative h-6 w-11 rounded-full ${form.data.is_active?'bg-[#1954b7]':'bg-[#c9d1d5]'}`}><input type="checkbox" checked={form.data.is_active} onChange={e=>form.setData('is_active',e.target.checked)} className="sr-only"/><span className={`absolute top-1 size-4 rounded-full bg-white transition-transform ${form.data.is_active?'translate-x-6':'translate-x-1'}`}/></span></label><label className="mt-3 flex min-h-14 cursor-pointer items-center justify-between rounded-xl bg-[#f8fafb] px-4 text-[12px]"><span><strong className="block">Destacado en Home</strong><small className="mt-1 block text-[10px] text-[#7a878e]">Sólo se publica si el producto y su categoría están visibles.</small></span><span className={`relative h-6 w-11 rounded-full ${form.data.is_featured?'bg-[#1954b7]':'bg-[#c9d1d5]'}`}><input type="checkbox" checked={form.data.is_featured} onChange={e=>form.setData('is_featured',e.target.checked)} className="sr-only"/><span className={`absolute top-1 size-4 rounded-full bg-white transition-transform ${form.data.is_featured?'translate-x-6':'translate-x-1'}`}/></span></label></section>
                 <button disabled={form.processing} className="flex min-h-13 w-full items-center justify-center gap-2 rounded-xl bg-[#1954b7] px-6 text-[12px] font-semibold text-white transition hover:bg-[#132b3b] disabled:opacity-45"><Save size={16}/>{form.processing?'Guardando…':'GUARDAR PRODUCTO'}</button>
                 {Object.keys(form.errors).length>0&&<div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-[11px] text-red-700">{Object.values(form.errors).map((error:any)=><p key={error}>{error}</p>)}</div>}
