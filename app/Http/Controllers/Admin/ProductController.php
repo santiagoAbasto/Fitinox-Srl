@@ -23,9 +23,24 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $products = Product::with('category')->withCount('variants')
-            ->when($request->search, fn ($query, $search) => $query->where('name', 'like', "%{$search}%"))
-            ->orderBy('sort_order')->paginate(20)->withQueryString();
+        $products = Product::query()
+            ->select('products.*')
+            ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
+            ->with('category')
+            ->withCount('variants')
+            ->when($request->string('search')->trim()->toString(), function ($query, string $search) {
+                $query->where(function ($searchQuery) use ($search) {
+                    $searchQuery
+                        ->where('products.name', 'like', "%{$search}%")
+                        ->orWhere('products.sku', 'like', "%{$search}%")
+                        ->orWhereHas('variants', fn ($variants) => $variants->where('code', 'like', "%{$search}%"));
+                });
+            })
+            ->orderBy('categories.name')
+            ->orderBy('products.name')
+            ->orderBy('products.id')
+            ->paginate(20)
+            ->withQueryString();
 
         return Inertia::render('Products/Index', [
             'products' => $products,

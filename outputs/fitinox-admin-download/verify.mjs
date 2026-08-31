@@ -1,7 +1,8 @@
+import { fileURLToPath } from "node:url";
 import fs from "node:fs/promises";
 import { FileBlob, SpreadsheetFile } from "@oai/artifact-tool";
 
-const directory = "/Users/user/Desktop/FITINOX/outputs/fitinox-admin-download";
+const directory = fileURLToPath(new URL("../../outputs/fitinox-admin-download", import.meta.url));
 const input = await FileBlob.load(`${directory}/Productos_FITINOX_datos_actuales.xlsx`);
 const workbook = await SpreadsheetFile.importXlsx(input);
 

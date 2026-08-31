@@ -1,6 +1,23 @@
 @extends('layouts.public')
 @section('title', $category->name.' | Fitinox')
 @section('content')
+@if(!$category->parent_id && $childCategories->isNotEmpty())
+    <section data-public-hero class="relative h-[240px] overflow-hidden min-[1224px]:h-[350px]">
+        <img src="/storage/figma/about.png" alt="" class="absolute inset-0 h-full w-full object-cover">
+        <div class="absolute inset-0 bg-gradient-to-l from-[#1954b7] to-[#132b3b] opacity-90 mix-blend-multiply"></div>
+        <div data-public-hero-content class="fitinox-content-1224 relative h-full text-white">
+            <p class="pt-5 text-[12px] min-[1224px]:pt-[24px]"><a href="/" class="font-bold">Inicio</a> &gt; Productos</p>
+            <h1 class="absolute bottom-10 left-0 text-[32px] leading-[1.2] font-semibold sm:text-[36px] min-[1224px]:top-[202px] min-[1224px]:bottom-auto min-[1224px]:w-[529px] min-[1224px]:text-[40px]">Productos</h1>
+        </div>
+    </section>
+    <section data-reveal class="fitinox-content-1224 py-12 sm:py-16 min-[1224px]:pt-[80px] min-[1224px]:pb-[284px]" aria-label="Subcategorías de {{ $category->name }}">
+        <div class="grid gap-[24px] sm:grid-cols-2 lg:grid-cols-4">
+            @foreach($childCategories as $childCategory)
+                <x-category-card :category="$childCategory" data-reveal-item />
+            @endforeach
+        </div>
+    </section>
+@else
 <div class="mx-auto w-[calc(100%-40px)] max-w-[1224px] pt-[24px] pb-[97px] xl:w-full">
     <p class="text-[12px] leading-[18px]"><a href="/" class="font-bold">Inicio</a> &gt; <a href="/productos" class="font-bold">Productos</a> &gt; {{ $category->name }}</p>
     <div class="mt-[76px] grid gap-[24px] lg:grid-cols-[288px_1fr]">
@@ -66,7 +83,9 @@
                                     @if($child->children->isNotEmpty())
                                         <div class="border-l border-[#dedfe0] pl-[12px]">
                                             @foreach($child->children as $grandchild)
-                                                @php($isGrandchildCurrent = $grandchild->id === $category->id)
+                                                @php
+                                                    $isGrandchildCurrent = $grandchild->id === $category->id;
+                                                @endphp
                                                 <a href="{{ route('products.category', $grandchild) }}" class="block text-[13px] leading-[26px] transition-colors hover:text-[#1954b7] {{ $isGrandchildCurrent ? 'font-semibold text-[#1954b7]' : 'text-[#5b6267]' }}" @if($isGrandchildCurrent) aria-current="page" @endif>{{ $grandchild->name }}</a>
                                             @endforeach
                                         </div>
@@ -79,14 +98,19 @@
             </div>
         </aside>
 
-        <div class="grid content-start gap-[24px] sm:grid-cols-2 xl:grid-cols-3">
-            @foreach($products as $product)
-            <a data-reveal-item href="{{ route('products.show',$product) }}" class="min-h-[380px] overflow-hidden rounded-[6px] border border-[#dedfe0] bg-white">
-                <div role="img" aria-label="{{ $product->name }}" class="aspect-square w-full bg-contain bg-center bg-no-repeat" style="background-image: url('{{ Storage::url($product->main_image ?: 'products/product-placeholder.svg') }}');"></div>
-                <div class="px-[24px] pt-[12px] pb-[20px]"><p class="text-[12px] leading-[18px] font-bold text-[#1954b7]">{{ mb_strtoupper($category->name) }}</p><h3 class="mt-[5px] text-[18px] leading-[27px] font-medium text-black">{{ $product->name }}</h3></div>
-            </a>
-            @endforeach
-        </div>
+        <main class="min-w-0">
+            @if($products->isNotEmpty())
+                <div data-reveal class="grid content-start gap-[24px] sm:grid-cols-2 xl:grid-cols-3" aria-label="Productos de {{ $category->name }}">
+                    @foreach($products as $product)
+                        <x-product-card :product="$product" data-reveal-item />
+                    @endforeach
+                </div>
+            @else
+                <div class="rounded-[8px] border border-[#dedfe0] bg-[#f8fafb] px-6 py-10 text-center text-[14px] text-[#5b6267]">
+                    Todavía no hay productos publicados en esta categoría.
+                </div>
+            @endif
+        </main>
     </div>
 </div>
 
@@ -115,4 +139,5 @@
         });
     });
 </script>
+@endif
 @endsection

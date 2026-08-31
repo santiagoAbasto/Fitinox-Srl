@@ -131,6 +131,8 @@ class ProductController extends Controller
     {
         abort_unless($category->is_active, 404);
 
+        $category->loadMissing(['parent.parent']);
+
         $activeCategoryIds = [];
         $activeCategory = $category;
         while ($activeCategory) {
@@ -148,7 +150,12 @@ class ProductController extends Controller
                 ->orderBy('sort_order')
                 ->get(),
             'activeCategoryIds' => $activeCategoryIds,
-            'products' => Product::whereIn('category_id', [$category->id, ...$this->descendantIds($category)])->where('is_active', true)->orderBy('sort_order')->get(),
+            'childCategories' => Category::where('is_active', true)
+                ->where('parent_id', $category->id)
+                ->with(['parent.parent'])
+                ->orderBy('sort_order')
+                ->get(),
+            'products' => Product::with('category')->whereIn('category_id', [$category->id, ...$this->descendantIds($category)])->where('is_active', true)->orderBy('sort_order')->get(),
             'settings' => Setting::pluck('value', 'key'),
         ]);
     }
@@ -168,8 +175,17 @@ class ProductController extends Controller
     public function show(Product $product)
     {
         abort_unless($product->is_active && $product->category?->is_active, 404);
+        $product->load(['category', 'variants' => fn ($query) => $query->where('is_active', true)]);
+        $characteristicColumns = collect($product->variantCharacteristicColumns());
+        $splitVariantTables = $characteristicColumns->count() <= 3;
+
         return view('products.show', [
-            'product' => $product->load(['category', 'variants' => fn ($query) => $query->where('is_active', true)]),
+            'product' => $product,
+            'characteristicColumns' => $characteristicColumns,
+            'splitVariantTables' => $splitVariantTables,
+            'variantGroups' => $splitVariantTables
+                ? $product->variants->chunk(max(1, (int) ceil($product->variants->count() / 2)))
+                : collect([$product->variants]),
             'related' => $product->relatedProducts()
                 ->with('category')
                 ->where('is_active', true)

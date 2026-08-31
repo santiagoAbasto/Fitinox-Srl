@@ -9,11 +9,7 @@
 <section data-reveal class="fitinox-content-1224 py-12 sm:py-16 min-[1224px]:pt-[80px] min-[1224px]:pb-[284px]">
     <div class="grid gap-[24px] sm:grid-cols-2 lg:grid-cols-4">
         @foreach($categories as $category)
-        <a data-reveal-item href="{{ route('products.category', $category) }}" class="group relative h-[300px] overflow-hidden rounded-[6px] bg-[#f5f5f5] sm:h-[350px] min-[1224px]:!h-[392px]">
-            <img src="{{ Storage::url($category->image) }}" alt="{{ $category->name }}" class="h-full w-full object-cover transition duration-500 group-hover:scale-105">
-            <div class="absolute inset-0 bg-gradient-to-b from-white/0 to-black/75"></div>
-            <div class="absolute right-[18px] bottom-[29px] left-[18px] flex items-end justify-between text-white"><strong class="max-w-[220px] text-[20px] leading-[30px]">{{ $category->name }}</strong><span class="text-[30px] font-light">+</span></div>
-        </a>
+            <x-category-card :category="$category" data-reveal-item />
         @endforeach
     </div>
 </section>

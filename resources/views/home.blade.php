@@ -58,10 +58,7 @@
         <h2 class="text-[30px] leading-[1.2] font-semibold text-fitinox sm:text-[34px] md:text-[36px] xl:text-[40px]">{{ $page->sections['featured_title'] ?? 'Productos destacados' }}</h2>
         <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             @foreach($products as $product)
-            <a href="{{ route('products.show', $product) }}" data-reveal-item class="block h-[350px] overflow-hidden rounded-[6px] border border-fitinox-line bg-white">
-                <div class="flex h-[230px] items-center justify-center p-5"><img src="{{ Storage::url($product->main_image) }}" alt="{{ $product->name }}" class="max-h-full max-w-full object-contain"></div>
-                <div class="px-6"><p class="text-[12px] font-bold text-fitinox-accent">{{ mb_strtoupper($product->category->name) }}</p><h3 class="mt-2 text-[18px] font-medium tracking-[-.01em] text-black">{{ $product->name }}</h3></div>
-            </a>
+                <x-product-card :product="$product" data-reveal-item />
             @endforeach
         </div>
     </section>

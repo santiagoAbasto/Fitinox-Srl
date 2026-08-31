@@ -47,7 +47,7 @@ class CategoryController extends Controller
         $previousImage = $category->image;
         $category->update($data);
 
-        if ($category->parent_id && $previousImage) {
+        if (isset($data['image']) && $previousImage && $previousImage !== $data['image']) {
             Storage::disk('public')->delete($previousImage);
         }
 
@@ -93,7 +93,6 @@ class CategoryController extends Controller
             $data['image'] = $request->file('image_file')->store('categories/images', 'public');
         }
         if ($parentId) {
-            $data['image'] = null;
             $data['is_featured'] = false;
         }
         $data['slug'] = $this->availableSlug($data['name'], $parent, $category);
@@ -109,6 +108,7 @@ class CategoryController extends Controller
                 'name' => $category->name,
                 'level' => $category->parent_id ? 2 : 1,
                 'path' => $category->parent ? $category->parent->name.' › '.$category->name : $category->name,
+                'effective_image' => $category->resolvedImage(),
             ])->values()->all();
     }
 

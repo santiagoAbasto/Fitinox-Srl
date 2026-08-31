@@ -1,4 +1,16 @@
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area } from 'recharts/es6/cartesian/Area';
+import { Bar } from 'recharts/es6/cartesian/Bar';
+import { CartesianGrid } from 'recharts/es6/cartesian/CartesianGrid';
+import { XAxis } from 'recharts/es6/cartesian/XAxis';
+import { YAxis } from 'recharts/es6/cartesian/YAxis';
+import { AreaChart } from 'recharts/es6/chart/AreaChart';
+import { BarChart } from 'recharts/es6/chart/BarChart';
+import { PieChart } from 'recharts/es6/chart/PieChart';
+import { Cell } from 'recharts/es6/component/Cell';
+import { Legend } from 'recharts/es6/component/Legend';
+import { ResponsiveContainer } from 'recharts/es6/component/ResponsiveContainer';
+import { Tooltip } from 'recharts/es6/component/Tooltip';
+import { Pie } from 'recharts/es6/polar/Pie';
 
 const colors = ['#1954b7','#19a974','#ef9d34','#8667c7','#e35d6a','#4e7b8e'];
 const compact = new Intl.NumberFormat('es-AR',{notation:'compact',maximumFractionDigits:1});

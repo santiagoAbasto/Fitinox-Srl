@@ -36,6 +36,7 @@ class ProductSpreadsheetImporterTest extends TestCase
         $this->assertSame('1-Recto-Macho-F', $product->photo_import_key);
         $this->assertSame('upload', $product->video_type);
         $this->assertSame('1-Recto-Macho-V', $product->video_import_key);
+        $this->assertNull($product->main_image);
         $this->assertSame(14.69, (float) $variant->list_price);
         $this->assertSame(0.0, (float) $variant->discount_percent);
         $this->assertSame(14.69, (float) $variant->final_price);
@@ -58,6 +59,108 @@ class ProductSpreadsheetImporterTest extends TestCase
         $this->assertNull($product->video_path);
     }
 
+    public function test_a_blank_variant_row_does_not_remove_the_products_media_reference(): void
+    {
+        $csv = implode("\n", [
+            'CODIGO;DETALLE;CATEGORIA;FOTO;VIDEO',
+            'COD-001;Codo Unión;Accesorios para tubos;12-Codo Union F.jpg;12-Codo Union V.mp4',
+            'COD-002;Codo Unión;Accesorios para tubos;;',
+        ]);
+
+        app(ProductSpreadsheetImporter::class)->import(
+            UploadedFile::fake()->createWithContent('variantes.csv', $csv)
+        );
+
+        $product = Product::where('slug', 'codo-union')->firstOrFail();
+        $this->assertSame('12-Codo Union F', $product->photo_import_key);
+        $this->assertSame('12-Codo Union V', $product->video_import_key);
+        $this->assertSame('upload', $product->video_type);
+        $this->assertCount(2, $product->variants);
+    }
+
+    public function test_a_later_spreadsheet_with_blank_media_cells_preserves_uploaded_and_manual_media(): void
+    {
+        Storage::fake('public');
+        $category = Category::create([
+            'name' => 'Esféricas',
+            'slug' => 'esfericas',
+            'is_active' => true,
+        ]);
+        $product = Product::create([
+            'category_id' => $category->id,
+            'name' => '2 vías ASTM A351 Serie 1.000',
+            'slug' => '2-vias-astm-a351-serie-1000',
+            'main_image' => 'products/images/esferica-principal.jpg',
+            'photo_import_key' => '1-S1000DY',
+            'gallery' => ['products/gallery/esferica-secundaria.jpg'],
+            'video_type' => 'upload',
+            'video_path' => 'products/videos/esferica.mp4',
+            'video_import_key' => '1-S1000DY-V',
+            'is_active' => true,
+        ]);
+        $product->variants()->create(['code' => 'ESF-1000', 'is_active' => true]);
+        foreach ([$product->main_image, $product->gallery[0], $product->video_path] as $path) {
+            Storage::disk('public')->put($path, 'archivo');
+        }
+
+        $csv = implode("\n", [
+            'CODIGO;DETALLE;CATEGORIA;FOTO;VIDEO',
+            'ESF-1000;2 vías ASTM A351 Serie 1.000;Esféricas;;',
+        ]);
+
+        app(ProductSpreadsheetImporter::class)->import(
+            UploadedFile::fake()->createWithContent('actualizacion.csv', $csv)
+        );
+
+        $product->refresh();
+        $this->assertSame('products/images/esferica-principal.jpg', $product->main_image);
+        $this->assertSame('1-S1000DY', $product->photo_import_key);
+        $this->assertSame(['products/gallery/esferica-secundaria.jpg'], $product->gallery);
+        $this->assertSame('products/videos/esferica.mp4', $product->video_path);
+        $this->assertSame('1-S1000DY-V', $product->video_import_key);
+        foreach ([$product->main_image, $product->gallery[0], $product->video_path] as $path) {
+            Storage::disk('public')->assertExists($path);
+        }
+    }
+
+    public function test_a_new_spreadsheet_photo_key_keeps_current_and_gallery_images_until_replacement_succeeds(): void
+    {
+        Storage::fake('public');
+        $category = Category::create([
+            'name' => 'Accesorios para tubos',
+            'slug' => 'accesorios-para-tubos',
+            'is_active' => true,
+        ]);
+        $product = Product::create([
+            'category_id' => $category->id,
+            'name' => 'Buje Reducción',
+            'slug' => 'buje-reduccion',
+            'main_image' => 'products/images/imagen-equivocada.jpg',
+            'gallery' => ['products/gallery/segunda-foto.jpg'],
+            'photo_import_key' => null,
+            'is_active' => true,
+        ]);
+        $product->variants()->create(['code' => 'BUJE-001', 'is_active' => true]);
+        Storage::disk('public')->put('products/images/imagen-equivocada.jpg', 'anterior');
+        Storage::disk('public')->put('products/gallery/segunda-foto.jpg', 'segunda');
+
+        $csv = implode("\n", [
+            'CODIGO;DETALLE;CATEGORIA;FOTO',
+            'BUJE-001;Buje Reducción;Accesorios para tubos;Buje Reduccion F.jpg',
+        ]);
+
+        app(ProductSpreadsheetImporter::class)->import(
+            UploadedFile::fake()->createWithContent('reemplazo.csv', $csv)
+        );
+
+        $product->refresh();
+        $this->assertSame('Buje Reduccion F', $product->photo_import_key);
+        $this->assertSame('products/images/imagen-equivocada.jpg', $product->main_image);
+        $this->assertSame(['products/gallery/segunda-foto.jpg'], $product->gallery);
+        Storage::disk('public')->assertExists('products/images/imagen-equivocada.jpg');
+        Storage::disk('public')->assertExists('products/gallery/segunda-foto.jpg');
+    }
+
     public function test_it_imports_products_without_tube_or_thread_and_keeps_unlimited_characteristics(): void
     {
         $csv = implode("\n", [
@@ -65,7 +168,7 @@ class ProductSpreadsheetImporterTest extends TestCase
             'Accesorios para caños;Caños;CA-SC44-04;Sin Costura ASTM A312;1/4" (13,17mm) Sch 40 (2,24mm);AISI 304/304L;1000 PSI',
         ]);
 
-        app(ProductSpreadsheetImporter::class)->import(
+        $report = app(ProductSpreadsheetImporter::class)->import(
             UploadedFile::fake()->createWithContent('productos-dinamicos.csv', $csv)
         );
 
@@ -77,11 +180,21 @@ class ProductSpreadsheetImporterTest extends TestCase
         $this->assertSame('1000 PSI', $variant->characteristicValue('presion_maxima'));
         $this->assertSame(
             ['Diámetro nominal/Sch', 'Calidad', 'PRESION MAXIMA'],
+            collect($report['technical_columns'])->pluck('label')->values()->all()
+        );
+        $this->assertSame(
+            ['Diámetro nominal/Sch', 'Calidad', 'PRESION MAXIMA'],
             collect($variant->technicalCharacteristics(false))->pluck('label')->values()->all()
+        );
+
+        $product = $variant->product->load('variants');
+        $this->assertSame(
+            ['Diámetro nominal/Sch', 'Calidad', 'PRESION MAXIMA'],
+            collect($product->variantCharacteristicColumns())->pluck('label')->values()->all()
         );
     }
 
-    public function test_it_synchronizes_the_inventory_and_removes_absent_products_and_media(): void
+    public function test_it_updates_the_inventory_without_removing_absent_products_or_media(): void
     {
         Storage::fake('public');
         $category = Category::create(['name' => 'Vieja', 'slug' => 'vieja', 'is_active' => true, 'sort_order' => 0]);
@@ -107,12 +220,13 @@ class ProductSpreadsheetImporterTest extends TestCase
             UploadedFile::fake()->createWithContent('inventario.csv', $csv)
         );
 
-        $this->assertSame(1, $report['variants_deleted']);
-        $this->assertSame(1, $report['products_deleted']);
-        $this->assertDatabaseMissing('product_variants', ['code' => 'CODIGO-VIEJO']);
-        $this->assertDatabaseMissing('products', ['slug' => 'producto-viejo']);
+        $this->assertSame(0, $report['variants_deleted']);
+        $this->assertSame(0, $report['products_deleted']);
+        $this->assertSame(0, $report['files_deleted']);
+        $this->assertDatabaseHas('product_variants', ['code' => 'CODIGO-VIEJO']);
+        $this->assertDatabaseHas('products', ['slug' => 'producto-viejo']);
         $this->assertDatabaseHas('product_variants', ['code' => 'CODIGO-NUEVO']);
-        Storage::disk('public')->assertMissing('products/images/vieja.jpg');
-        Storage::disk('public')->assertMissing('products/videos/viejo.mp4');
+        Storage::disk('public')->assertExists('products/images/vieja.jpg');
+        Storage::disk('public')->assertExists('products/videos/viejo.mp4');
     }
 }

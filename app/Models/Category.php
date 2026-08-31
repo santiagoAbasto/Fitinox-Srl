@@ -27,4 +27,13 @@ class Category extends Model
     {
         return $this->hasMany(self::class, 'parent_id')->orderBy('sort_order');
     }
+
+    public function resolvedImage(): ?string
+    {
+        if ($this->image) {
+            return $this->image;
+        }
+
+        return $this->parent?->resolvedImage();
+    }
 }

@@ -17,9 +17,11 @@ use ZipArchive;
 
 class ProductSpreadsheetImporter
 {
-    public function __construct(private readonly ProductInventoryCleaner $cleaner)
-    {
-    }
+    private const METADATA_HEADERS = [
+        'categoria', 'sub_categoria', 'subcategoria', 'sub_sub_categoria', 'codigo', 'detalle',
+        'foto', 'video', 'precio_lista', 'precio_lista_us', 'descuento', 'porcentaje_descuento',
+        'precio_final', 'precio_final_us', 'stock_fisico', 'stock_en_transito', 'cantidad_solicitada',
+    ];
 
     public function import(UploadedFile $file): array
     {
@@ -33,13 +35,13 @@ class ProductSpreadsheetImporter
             if (!in_array($column, $headers, true)) throw new RuntimeException("Falta la columna obligatoria: {$column}.");
         }
 
-        $filesToDelete = [];
-        $report = DB::transaction(function () use ($rows, $headers, $headerLabels, $firstDataRow, $file, &$filesToDelete) {
+        return DB::transaction(function () use ($rows, $headers, $headerLabels, $firstDataRow, $file) {
             $report = [
                 'file' => $file->getClientOriginalName(),
                 'processed' => 0, 'created' => 0, 'updated' => 0, 'unchanged' => 0, 'skipped' => 0,
                 'products_created' => 0, 'duplicates' => 0, 'inferred_details' => 0,
                 'variants_deleted' => 0, 'products_deleted' => 0, 'categories_deleted' => 0, 'files_deleted' => 0,
+                'technical_columns' => $this->technicalColumns($headers, $headerLabels),
                 'changes' => [], 'errors' => [],
             ];
             $defaultCategory = Category::firstOrCreate(
@@ -68,6 +70,8 @@ class ProductSpreadsheetImporter
                 throw new RuntimeException('El archivo no contiene códigos válidos. No se modificó el inventario.');
             }
 
+            $mediaByProduct = $this->mediaReferencesByProduct($prepared);
+
             foreach ($prepared as $code => $record) {
                 $excelRow = $record['row'];
                 $data = $record['data'];
@@ -85,7 +89,7 @@ class ProductSpreadsheetImporter
                         'category_id' => $category->id,
                         'name' => $detail,
                         'slug' => Str::slug($detail),
-                        'main_image' => $this->defaultImage($detail),
+                        'main_image' => null,
                         'is_active' => true,
                         'sort_order' => $nextProductOrder,
                     ]);
@@ -93,41 +97,26 @@ class ProductSpreadsheetImporter
                 }
 
                 $productAttributes = ['category_id' => $category->id];
-                if ($photo = $this->nullableString($data['foto'] ?? null)) {
+                $productMedia = $mediaByProduct[Str::slug($detail)] ?? ['photo' => null, 'video' => null];
+                if ($photo = $productMedia['photo']) {
                     $newPhotoKey = pathinfo(basename(str_replace('\\', '/', $photo)), PATHINFO_FILENAME);
-                    if ($product->photo_import_key && $product->photo_import_key !== $newPhotoKey && $product->main_image) {
-                        $filesToDelete[] = $product->main_image;
-                        $productAttributes['main_image'] = null;
-                    }
                     $productAttributes['photo_import_key'] = $newPhotoKey;
-                } else {
-                    if ($product->main_image) $filesToDelete[] = $product->main_image;
-                    $productAttributes += ['photo_import_key' => null, 'main_image' => null];
                 }
-                if ($video = $this->nullableString($data['video'] ?? null)) {
+                if ($video = $productMedia['video']) {
                     if ($this->isYouTubeUrl($video)) {
-                        if ($product->video_path) $filesToDelete[] = $product->video_path;
                         $productAttributes += [
                             'video_type' => 'youtube',
                             'youtube_url' => $video,
-                            'video_path' => null,
                             'video_import_key' => null,
                         ];
                     } else {
                         $newVideoKey = pathinfo(basename(str_replace('\\', '/', $video)), PATHINFO_FILENAME);
-                        if ($product->video_import_key && $product->video_import_key !== $newVideoKey && $product->video_path) {
-                            $filesToDelete[] = $product->video_path;
-                            $productAttributes['video_path'] = null;
-                        }
                         $productAttributes += [
                             'video_type' => 'upload',
                             'video_import_key' => $newVideoKey,
                             'youtube_url' => null,
                         ];
                     }
-                } else {
-                    if ($product->video_path) $filesToDelete[] = $product->video_path;
-                    $productAttributes += ['video_type' => null, 'video_path' => null, 'video_import_key' => null, 'youtube_url' => null];
                 }
                 $product->fill($productAttributes);
                 if ($product->isDirty()) $product->save();
@@ -171,33 +160,34 @@ class ProductSpreadsheetImporter
                 ]);
             }
 
-            $incomingCodes = array_keys($prepared);
-            $obsoleteVariants = ProductVariant::query()->whereNotIn('code', $incomingCodes)->get();
-            $report['variants_deleted'] = $obsoleteVariants->count();
-            ProductVariant::query()->whereNotIn('code', $incomingCodes)->delete();
-
-            $obsoleteProducts = Product::query()->doesntHave('variants')->get();
-            foreach ($obsoleteProducts as $obsoleteProduct) {
-                $filesToDelete = array_merge($filesToDelete, $this->cleaner->mediaPaths($obsoleteProduct));
-            }
-            $report['products_deleted'] = $obsoleteProducts->count();
-            Product::query()->whereKey($obsoleteProducts->modelKeys())->delete();
-
-            do {
-                $emptyCategories = Category::query()->doesntHave('products')->doesntHave('children')->pluck('id');
-                $deleted = $emptyCategories->count();
-                if ($deleted) Category::query()->whereKey($emptyCategories)->delete();
-                $report['categories_deleted'] += $deleted;
-            } while ($deleted > 0);
-
-            $report['files_deleted'] = count(array_unique(array_filter($filesToDelete)));
-
             return $report;
         });
+    }
 
-        $this->cleaner->deleteFiles($filesToDelete);
+    /**
+     * Foto y video pertenecen al producto, no a cada código. Conservamos la
+     * última referencia no vacía entre todas sus variantes para que una fila
+     * vacía posterior no elimine una asociación válida del mismo producto.
+     */
+    private function mediaReferencesByProduct(array $prepared): array
+    {
+        $references = [];
 
-        return $report;
+        foreach ($prepared as $code => $record) {
+            $data = $record['data'];
+            $detail = trim((string) ($data['detalle'] ?? '')) ?: $this->inferredDetail($code);
+            $slug = Str::slug($detail);
+            $references[$slug] ??= ['photo' => null, 'video' => null];
+
+            if ($photo = $this->nullableString($data['foto'] ?? null)) {
+                $references[$slug]['photo'] = $photo;
+            }
+            if ($video = $this->nullableString($data['video'] ?? null)) {
+                $references[$slug]['video'] = $video;
+            }
+        }
+
+        return $references;
     }
 
     private function extractTable(array $rows): array
@@ -243,14 +233,9 @@ class ProductSpreadsheetImporter
 
     private function characteristics(array $headers, array $labels, array $data): array
     {
-        $metadata = [
-            'categoria', 'sub_categoria', 'subcategoria', 'sub_sub_categoria', 'codigo', 'detalle',
-            'foto', 'video', 'precio_lista', 'precio_lista_us', 'descuento', 'porcentaje_descuento',
-            'precio_final', 'precio_final_us', 'stock_fisico', 'stock_en_transito', 'cantidad_solicitada',
-        ];
         $characteristics = [];
         foreach ($headers as $header) {
-            if (str_starts_with($header, '__ignorar_') || in_array($header, $metadata, true)) continue;
+            if ($this->isMetadataHeader($header)) continue;
             $characteristics[$header] = [
                 'label' => $labels[$header] ?? $this->characteristicLabel($header, ''),
                 'value' => $this->nullableString($data[$header] ?? null),
@@ -258,6 +243,23 @@ class ProductSpreadsheetImporter
         }
 
         return $characteristics;
+    }
+
+    private function technicalColumns(array $headers, array $labels): array
+    {
+        return collect($headers)
+            ->reject(fn (string $header) => $this->isMetadataHeader($header))
+            ->map(fn (string $header) => [
+                'key' => $header,
+                'label' => $labels[$header] ?? $this->characteristicLabel($header, ''),
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function isMetadataHeader(string $header): bool
+    {
+        return str_starts_with($header, '__ignorar_') || in_array($header, self::METADATA_HEADERS, true);
     }
 
     private function characteristicLabel(string $header, string $original): string
@@ -434,10 +436,4 @@ class ProductSpreadsheetImporter
         return 'Artículo '.($family ?: Str::beforeLast($code, '-'));
     }
 
-    private function defaultImage(string $detail): string
-    {
-        if (Str::contains(Str::lower($detail), 'codo')) return 'figma/product-codo.png';
-        if (Str::contains(Str::lower($detail), 'recto')) return 'figma/product-recto.png';
-        return 'products/product-placeholder.svg';
-    }
 }

@@ -1,8 +1,9 @@
+import { fileURLToPath } from "node:url";
 import fs from "node:fs/promises";
 import { FileBlob, SpreadsheetFile } from "@oai/artifact-tool";
 
 const source = "/Users/user/Downloads/Excel subida masiva productos.xlsx";
-const output = "/Users/user/Desktop/FITINOX/outputs/fitinox-media-import";
+const output = fileURLToPath(new URL("../../outputs/fitinox-media-import", import.meta.url));
 const workbook = await SpreadsheetFile.importXlsx(await FileBlob.load(source));
 
 console.log((await workbook.inspect({ kind: "workbook,sheet", maxChars: 5000 })).ndjson);

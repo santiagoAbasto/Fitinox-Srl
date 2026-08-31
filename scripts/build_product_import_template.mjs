@@ -1,8 +1,9 @@
+import { fileURLToPath } from "node:url";
 import fs from "node:fs/promises";
 import { SpreadsheetFile, Workbook } from "/Users/user/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/@oai/artifact-tool/dist/artifact_tool.mjs";
 
-const outputDir = "/Users/user/Desktop/FITINOX/outputs/fitinox-importacion-masiva";
-const storageDir = "/Users/user/Desktop/FITINOX/storage/app/private/templates";
+const outputDir = fileURLToPath(new URL("../outputs/fitinox-importacion-masiva", import.meta.url));
+const storageDir = fileURLToPath(new URL("../storage/app/private/templates", import.meta.url));
 const filename = "Plantilla_importacion_masiva_productos_FITINOX.xlsx";
 
 await fs.mkdir(outputDir, { recursive: true });

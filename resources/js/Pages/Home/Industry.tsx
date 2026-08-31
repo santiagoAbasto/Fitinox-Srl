@@ -53,6 +53,7 @@ export default function Industry({ page }: { page: any }) {
                         </div>
                     </div>
                     <label className="mt-4 flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-[#bfc9ce] text-[12px] font-semibold text-[#52616a] transition hover:border-[#1954b7] hover:text-[#1954b7]"><UploadCloud size={16}/> Reemplazar imagen del banner<input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={event => form.setData('industry_image_file', event.target.files?.[0] || null)}/></label>
+                    <p className="mt-2 text-[10px] leading-4 text-[#7b878e]"><strong>Recomendado:</strong> 1920 × 460 px · JPG, PNG o WebP · máximo 8 MB.</p>
 
                     <div className="mt-7 grid gap-6 lg:grid-cols-2">
                         <div className="space-y-5">

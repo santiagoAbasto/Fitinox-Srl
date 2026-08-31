@@ -36,8 +36,8 @@ class ProductMediaBatchImporterTest extends TestCase
 
         $this->assertSame(1, $images['matched']);
         $this->assertSame(1, $videos['matched']);
-        $this->assertSame('products/images/1 recto macho f.JPG', $product->main_image);
-        $this->assertSame('products/videos/1-RECTO-MACHO-V.mp4', $product->video_path);
+        $this->assertMatchesRegularExpression('#^products/images/1-recto-macho-f-[a-f0-9]{12}\.jpg$#', $product->main_image);
+        $this->assertMatchesRegularExpression('#^products/videos/1-recto-macho-v-[a-f0-9]{12}\.mp4$#', $product->video_path);
         $this->assertSame('upload', $product->video_type);
         Storage::disk('public')->assertExists($product->main_image);
         Storage::disk('public')->assertExists($product->video_path);
@@ -52,5 +52,31 @@ class ProductMediaBatchImporterTest extends TestCase
 
         $this->assertSame(0, $report['matched']);
         $this->assertSame(1, $report['unmatched']);
+    }
+
+    public function test_it_replaces_existing_media_with_a_new_public_url_and_removes_the_old_file(): void
+    {
+        Storage::fake('public');
+        $category = Category::create(['name' => 'Accesorios', 'slug' => 'accesorios', 'is_active' => true]);
+        $product = Product::create([
+            'category_id' => $category->id,
+            'name' => 'Codo Macho',
+            'slug' => 'codo-macho',
+            'photo_import_key' => '2-Codo Macho F',
+            'main_image' => 'products/images/foto-anterior.jpg',
+            'is_active' => true,
+        ]);
+        Storage::disk('public')->put($product->main_image, 'contenido anterior');
+
+        $report = app(ProductMediaBatchImporter::class)->import([
+            UploadedFile::fake()->image('2-Codo Macho F.jpg', 496, 496),
+        ], 'images');
+        $product->refresh();
+
+        $this->assertSame(1, $report['matched']);
+        $this->assertSame(1, $report['replaced']);
+        $this->assertNotSame('products/images/foto-anterior.jpg', $product->main_image);
+        Storage::disk('public')->assertMissing('products/images/foto-anterior.jpg');
+        Storage::disk('public')->assertExists($product->main_image);
     }
 }

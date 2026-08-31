@@ -25,7 +25,7 @@ Sitio web corporativo, catálogo comercial y plataforma de administración de FI
 | Base de datos | MySQL / MariaDB |
 | Frontend administrativo | React 19, Inertia 3, TypeScript |
 | Sitio público | Blade, Tailwind CSS 4, JavaScript |
-| Build | Vite 8 |
+| Build | Vite 7 |
 | Mapas y gráficos | MapLibre GL, Leaflet, Recharts |
 | Movimiento | Motion |
 | Documentos | Dompdf |
@@ -34,11 +34,24 @@ Sitio web corporativo, catálogo comercial y plataforma de administración de FI
 
 - PHP 8.3 o superior con las extensiones habituales de Laravel.
 - Composer 2.
-- Node.js compatible con Vite 8 y npm.
+- Node.js compatible con Vite 7 y npm.
 - MySQL o MariaDB.
 - Acceso de escritura a `storage` y `bootstrap/cache`.
 
 ## Instalación local
+
+La copia local está en `/Users/user/Projects/FITINOX`, fuera de Desktop/iCloud.
+Para restaurar sus dependencias sin reemplazar `.env` ni la base de datos:
+
+```bash
+cd /Users/user/Projects/FITINOX
+composer install
+npm ci
+php artisan view:clear
+npm run build
+```
+
+Los siguientes pasos son para una instalación nueva:
 
 ```bash
 git clone https://github.com/santiagoAbasto/Fitinox-Srl.git

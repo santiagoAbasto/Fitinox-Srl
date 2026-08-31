@@ -35,6 +35,7 @@ export default function About({ page }: { page: any }) {
                     <div className="border-b border-[#edf0f2] p-6 lg:border-r lg:border-b-0">
                         <div className="aspect-[4/3] overflow-hidden rounded-xl bg-[#eef2f4]"><img src={preview} alt="Vista previa de Nosotros" className="h-full w-full object-cover"/></div>
                         <label className="mt-4 flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-[#bfc9ce] text-[12px] font-semibold text-[#52616a] hover:border-[#1954b7] hover:text-[#1954b7]"><UploadCloud size={16}/> Reemplazar imagen<input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={event => form.setData('about_image_file', event.target.files?.[0] || null)}/></label>
+                        <p className="mt-2 text-[10px] leading-4 text-[#7b878e]"><strong>Recomendado:</strong> 1200 × 1200 px (1:1) · JPG, PNG o WebP · máximo 8 MB.</p>
                     </div>
                     <div className="space-y-5 p-6">
                         <label className="block text-[12px] font-semibold">Título<input className={input} value={form.data.about_title} onChange={event => form.setData('about_title', event.target.value)}/></label>
