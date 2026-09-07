@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use App\Models\Setting;
 use App\Rules\SecureUpload;
+use App\Services\IntegrationOutbox;
 use Illuminate\Support\Facades\Gate;
 
 class ClientPortalController extends Controller
@@ -99,7 +100,7 @@ class ClientPortalController extends Controller
         return back()->with('success', 'Carrito actualizado.');
     }
 
-    public function checkout(Request $request)
+    public function checkout(Request $request, IntegrationOutbox $outbox)
     {
         $client = $this->client($request);
         $items = $this->cartItems($request);
@@ -149,6 +150,7 @@ class ClientPortalController extends Controller
             return $order;
         });
         $request->session()->forget('fitinox_client_cart');
+        $outbox->order($order, 'order.created');
         try {
             $order->load('user', 'items');
             Mail::to($client->email)->send(new ClientOrderMail($order, 'client'));

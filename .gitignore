@@ -17,6 +17,10 @@ auth.json
 *.bak
 *.backup
 
+# One-time deployment helpers and integration credentials (never version)
+/deployment/fitinox-integracion.env
+/deployment/run-integration-deploy.php
+
 # PHP / Laravel dependencies and generated state
 /vendor/
 /bootstrap/cache/*.php

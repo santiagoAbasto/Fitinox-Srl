@@ -6,11 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class ClientOrder extends Model
 {
-    protected $fillable = ['user_id', 'number', 'status', 'delivery_date', 'subtotal', 'discount_total', 'total', 'notes', 'delivery_method', 'transport_name', 'transport_address', 'transport_phone', 'delivery_destination', 'attachment_path'];
+    protected $fillable = ['user_id', 'number', 'external_reference', 'integration_synced_at', 'status', 'delivery_date', 'subtotal', 'discount_total', 'total', 'notes', 'delivery_method', 'transport_name', 'transport_address', 'transport_phone', 'delivery_destination', 'attachment_path'];
 
     protected function casts(): array
     {
-        return ['subtotal' => 'decimal:2', 'discount_total' => 'decimal:2', 'total' => 'decimal:2', 'delivery_date' => 'date'];
+        return ['subtotal' => 'decimal:2', 'discount_total' => 'decimal:2', 'total' => 'decimal:2', 'delivery_date' => 'date', 'integration_synced_at' => 'datetime'];
     }
 
     public function user() { return $this->belongsTo(User::class); }

@@ -43,7 +43,7 @@ function VariantFields({ data, setData, errors }: any) {
             <span className={label}>{text}</span>
             <input
                 type={['list_price','physical_stock','transit_stock','sort_order'].includes(name) ? 'number' : 'text'}
-                step={name === 'list_price' ? '0.01' : undefined}
+                step={name === 'list_price' || name === 'physical_stock' || name === 'transit_stock' ? '0.001' : undefined}
                 min={['physical_stock','transit_stock','sort_order'].includes(name) ? 0 : undefined}
                 className={smallField}
                 placeholder={placeholder}

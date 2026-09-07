@@ -260,7 +260,7 @@ class ProductController extends Controller
             'characteristics.*.label' => ['required', 'string', 'max:100'],
             'characteristics.*.value' => ['nullable', 'string', 'max:500'],
             'list_price' => ['nullable', 'numeric', 'min:0'],
-            'physical_stock' => ['nullable', 'integer', 'min:0'],
+            'physical_stock' => ['nullable', 'numeric', 'min:0'],
             'transit_stock' => ['nullable', 'integer', 'min:0'],
             'sort_order' => ['required', 'integer', 'min:0'],
             'is_active' => ['required', 'boolean'],

@@ -30,10 +30,12 @@ use App\Http\Controllers\Admin\ClientZoneController;
 use App\Http\Controllers\Admin\NewsletterController as AdminNewsletterController;
 use App\Http\Controllers\NewsletterController;
 use App\Http\Controllers\AnalyticsEventController;
+use App\Http\Controllers\Api\OpenApiDocumentationController;
 use App\Http\Controllers\Admin\AnalyticsController as AdminAnalyticsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
+Route::get('/integracion/api', [OpenApiDocumentationController::class, 'ui'])->middleware('throttle:30,1')->name('integration.docs');
 Route::post('/analytics/events', AnalyticsEventController::class)->middleware('throttle:analytics')->name('analytics.events');
 Route::get('/idioma/{locale}', LocaleController::class)->whereIn('locale', ['es', 'en'])->name('locale.switch');
 Route::get('/nosotros', AboutController::class)->name('about');

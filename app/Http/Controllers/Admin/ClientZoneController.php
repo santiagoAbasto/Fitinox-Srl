@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use App\Rules\SecureUpload;
+use App\Services\IntegrationOutbox;
 
 class ClientZoneController extends Controller
 {
@@ -28,7 +29,7 @@ class ClientZoneController extends Controller
         ]);
     }
 
-    public function updateClient(Request $request, User $user)
+    public function updateClient(Request $request, User $user, IntegrationOutbox $outbox)
     {
         abort_unless($user->role === 'client', 404);
         $data = $request->validate([
@@ -49,6 +50,7 @@ class ClientZoneController extends Controller
         $data['deactivation_source'] = $data['is_active'] ? null : 'admin';
         $securityAttributes = collect($data)->only(['approval_status', 'is_active', 'deactivation_source'])->all();
         $user->fill(collect($data)->except(array_keys($securityAttributes))->all())->forceFill($securityAttributes)->save();
+        $outbox->client($user, 'client.updated');
 
         if ($request->boolean('send_credentials') || ($data['approval_status'] === 'approved' && $user->wasChanged('approval_status'))) {
             try { Mail::to($user->email)->send(new ClientCredentialsMail($user->fresh(), $password)); } catch (\Throwable $exception) { report($exception); }
@@ -57,7 +59,7 @@ class ClientZoneController extends Controller
         return back()->with('success', $data['approval_status'] === 'approved' ? 'Cliente aprobado y credenciales actualizadas.' : 'Datos y estado del cliente actualizados.');
     }
 
-    public function updateOrder(Request $request, ClientOrder $clientOrder)
+    public function updateOrder(Request $request, ClientOrder $clientOrder, IntegrationOutbox $outbox)
     {
         $data = $request->validate([
             'status' => ['required', Rule::in(['received', 'processing', 'quoted', 'completed', 'cancelled'])],
@@ -65,6 +67,7 @@ class ClientZoneController extends Controller
         ]);
         $clientOrder->update($data);
         if ($clientOrder->wasChanged(['status', 'delivery_date'])) {
+            $outbox->order($clientOrder, 'order.updated');
             try { Mail::to($clientOrder->user->email)->send(new ClientOrderMail($clientOrder->fresh(['user', 'items']), 'client')); } catch (\Throwable $exception) { report($exception); }
         }
         return back()->with('success', 'Pedido actualizado. El estado y la fecha ya se reflejan en el comprobante del cliente.');

@@ -37,6 +37,11 @@ class User extends Authenticatable
         return $this->hasMany(ClientOrder::class);
     }
 
+    public function integrationClient()
+    {
+        return $this->hasOne(IntegrationClient::class);
+    }
+
     public function isSuperAdmin(): bool
     {
         return $this->role === 'super_admin';

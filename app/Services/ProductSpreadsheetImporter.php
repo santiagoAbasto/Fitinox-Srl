@@ -131,7 +131,7 @@ class ProductSpreadsheetImporter
                     'list_price' => $this->decimal($data['precio_lista_us'] ?? $data['precio_lista'] ?? null),
                     'discount_percent' => 0,
                     'final_price' => $this->decimal($data['precio_lista_us'] ?? $data['precio_lista'] ?? null),
-                    'physical_stock' => $this->integer($data['stock_fisico'] ?? null),
+                    'physical_stock' => $this->decimal($data['stock_fisico'] ?? null),
                     'transit_stock' => $this->integer($data['stock_en_transito'] ?? null),
                     'is_active' => true,
                 ];

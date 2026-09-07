@@ -14,7 +14,7 @@ class ProductVariant extends Model
             'list_price' => 'decimal:2',
             'discount_percent' => 'decimal:2',
             'final_price' => 'decimal:2',
-            'physical_stock' => 'integer',
+            'physical_stock' => 'decimal:3',
             'transit_stock' => 'integer',
             'characteristics' => 'array',
             'is_active' => 'boolean',
@@ -66,5 +66,10 @@ class ProductVariant extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function integrationArticle()
+    {
+        return $this->hasOne(IntegrationArticle::class);
     }
 }

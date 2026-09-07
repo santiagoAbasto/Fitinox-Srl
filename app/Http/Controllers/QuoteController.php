@@ -9,6 +9,7 @@ use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\TurnstileService;
+use App\Services\IntegrationOutbox;
 
 class QuoteController extends Controller
 {
@@ -60,7 +61,7 @@ class QuoteController extends Controller
         return back()->with('success', 'Producto quitado de la solicitud.');
     }
 
-    public function store(Request $request, TurnstileService $turnstile)
+    public function store(Request $request, TurnstileService $turnstile, IntegrationOutbox $outbox)
     {
         $turnstile->validate($request, 'quote');
         $data = $request->validate([
@@ -73,7 +74,7 @@ class QuoteController extends Controller
         $items = collect(session('quote_cart', []))->values();
         if ($items->isEmpty()) return back()->withErrors(['cart' => 'Agregá al menos un producto antes de enviar la solicitud.']);
 
-        DB::transaction(function () use ($data, $items) {
+        $quote = DB::transaction(function () use ($data, $items) {
             $quote = QuoteRequest::create($data);
             foreach ($items as $item) {
                 $quote->items()->create([
@@ -87,7 +88,9 @@ class QuoteController extends Controller
                     'quantity' => $item['quantity'],
                 ]);
             }
+            return $quote;
         });
+        $outbox->quote($quote);
         session()->forget('quote_cart');
 
         return redirect()->route('quote.index')->with('success', 'Tu solicitud fue enviada correctamente. El equipo de Fitinox se pondrá en contacto.');

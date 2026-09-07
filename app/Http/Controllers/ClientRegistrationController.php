@@ -6,10 +6,11 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
 use App\Services\TurnstileService;
+use App\Services\IntegrationOutbox;
 
 class ClientRegistrationController extends Controller
 {
-    public function store(Request $request, TurnstileService $turnstile)
+    public function store(Request $request, TurnstileService $turnstile, IntegrationOutbox $outbox)
     {
         $turnstile->validate($request, 'registration');
         $data = $request->validate([
@@ -28,6 +29,7 @@ class ClientRegistrationController extends Controller
             'approval_status' => 'pending',
             'account_source' => 'web',
         ])->save();
+        $outbox->client($user, 'client.registered');
 
         return back()->with('client_registration_success', 'Recibimos tu solicitud. El equipo Fitinox te avisará cuando habilite tu cuenta.');
     }
