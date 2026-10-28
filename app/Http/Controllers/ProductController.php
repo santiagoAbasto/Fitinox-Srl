@@ -140,6 +140,9 @@ class ProductController extends Controller
             $activeCategory = $activeCategory->parent;
         }
 
+        $categoryIds = [$category->id, ...$this->descendantIds($category)];
+        $categoryPositions = array_flip($categoryIds);
+
         return view('products.category', [
             'category' => $category,
             'categories' => Category::where('is_active', true)
@@ -155,7 +158,19 @@ class ProductController extends Controller
                 ->with(['parent.parent'])
                 ->orderBy('sort_order')
                 ->get(),
-            'products' => Product::with('category')->whereIn('category_id', [$category->id, ...$this->descendantIds($category)])->where('is_active', true)->orderBy('sort_order')->get(),
+            'products' => Product::with('category')
+                ->whereIn('category_id', $categoryIds)
+                ->where('is_active', true)
+                ->orderBy('category_id')
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get()
+                ->sortBy(fn (Product $product) => [
+                    $categoryPositions[$product->category_id] ?? PHP_INT_MAX,
+                    $product->sort_order,
+                    $product->id,
+                ])
+                ->values(),
             'settings' => Setting::pluck('value', 'key'),
         ]);
     }
@@ -165,7 +180,11 @@ class ProductController extends Controller
         $ids = [];
         $pending = [$category->id];
         while ($pending) {
-            $children = Category::whereIn('parent_id', $pending)->pluck('id')->all();
+            $children = Category::whereIn('parent_id', $pending)
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->pluck('id')
+                ->all();
             $pending = array_values(array_diff($children, $ids));
             $ids = array_values(array_unique(array_merge($ids, $pending)));
         }

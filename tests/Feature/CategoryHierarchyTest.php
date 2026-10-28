@@ -14,7 +14,7 @@ class CategoryHierarchyTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_a_category_without_its_own_image_inherits_the_nearest_parent_image(): void
+    public function test_a_category_without_its_own_image_does_not_inherit_its_parent_image(): void
     {
         $main = Category::create([
             'name' => 'Accesorios para tubos',
@@ -38,11 +38,11 @@ class CategoryHierarchyTest extends TestCase
             'sort_order' => 'A',
         ]);
 
-        $this->assertSame('categories/images/main.jpg', $grandchild->load('parent.parent')->resolvedImage());
+        $this->assertNull($grandchild->load('parent.parent')->resolvedImage());
 
         $child->update(['image' => 'categories/images/child.jpg']);
 
-        $this->assertSame('categories/images/child.jpg', $grandchild->fresh()->load('parent.parent')->resolvedImage());
+        $this->assertNull($grandchild->fresh()->load('parent.parent')->resolvedImage());
     }
 
     public function test_admin_can_assign_an_optional_image_to_a_subcategory(): void
@@ -104,7 +104,7 @@ class CategoryHierarchyTest extends TestCase
 
         $response->assertOk();
         $response->assertSee(route('products.category', $child), false);
-        $response->assertSee('/storage/categories/images/main.jpg', false);
+        $response->assertSee('/storage/products/product-placeholder.svg', false);
         $response->assertSee('data-public-hero', false);
         $response->assertDontSee('Recto Macho');
 
@@ -114,5 +114,21 @@ class CategoryHierarchyTest extends TestCase
         $childResponse->assertDontSee('id="products-heading"', false);
         $childResponse->assertSee('aria-label="Productos de Conectores AJA-LOCK"', false);
         $childResponse->assertSee('Recto Macho');
+    }
+
+    public function test_public_category_products_follow_their_subcategory_and_spreadsheet_order(): void
+    {
+        $root = Category::create(['name' => 'Válvulas', 'slug' => 'valvulas', 'is_active' => true, 'sort_order' => 'A']);
+        $main = Category::create(['parent_id' => $root->id, 'name' => 'Válvulas múltiples', 'slug' => 'valvulas-multiples', 'is_active' => true, 'sort_order' => 'A']);
+        $first = Category::create(['parent_id' => $main->id, 'name' => 'Salidas múltiples', 'slug' => 'salidas-multiples', 'is_active' => true, 'sort_order' => 'A']);
+        $second = Category::create(['parent_id' => $main->id, 'name' => 'BYP STD', 'slug' => 'byp-std', 'is_active' => true, 'sort_order' => 'B']);
+        Product::create(['category_id' => $second->id, 'name' => 'Tercero en Excel', 'slug' => 'tercero-en-excel', 'is_active' => true, 'sort_order' => 'A']);
+        Product::create(['category_id' => $first->id, 'name' => 'Segundo en Excel', 'slug' => 'segundo-en-excel', 'is_active' => true, 'sort_order' => 'B']);
+        Product::create(['category_id' => $first->id, 'name' => 'Primero en Excel', 'slug' => 'primero-en-excel', 'is_active' => true, 'sort_order' => 'A']);
+
+        $response = $this->get(route('products.category', $main));
+
+        $response->assertOk();
+        $response->assertSeeInOrder(['Primero en Excel', 'Segundo en Excel', 'Tercero en Excel']);
     }
 }

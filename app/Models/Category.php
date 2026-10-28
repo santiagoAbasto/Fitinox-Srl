@@ -30,10 +30,8 @@ class Category extends Model
 
     public function resolvedImage(): ?string
     {
-        if ($this->image) {
-            return $this->image;
-        }
-
-        return $this->parent?->resolvedImage();
+        // Cada tarjeta representa una categoría distinta; no hereda la foto
+        // de su padre, que podría haber sido actualizada para otra categoría.
+        return $this->image;
     }
 }

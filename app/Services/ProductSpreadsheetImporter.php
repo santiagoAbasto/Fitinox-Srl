@@ -19,6 +19,7 @@ class ProductSpreadsheetImporter
 {
     private const METADATA_HEADERS = [
         'categoria', 'sub_categoria', 'subcategoria', 'sub_sub_categoria', 'codigo', 'detalle',
+        'orden_categoria', 'orden_sub_categoria', 'orden_subcategoria', 'orden_sub_sub_categoria', 'orden_subsubcategoria',
         'foto', 'video', 'precio_lista', 'precio_lista_us', 'descuento', 'porcentaje_descuento',
         'precio_final', 'precio_final_us', 'stock_fisico', 'stock_en_transito', 'cantidad_solicitada',
     ];
@@ -48,7 +49,10 @@ class ProductSpreadsheetImporter
                 ['slug' => 'accesorios-para-tubos'],
                 ['name' => 'Accesorios para tubos', 'is_active' => true, 'sort_order' => 'A']
             );
-            $nextProductOrder = Product::orderByDesc('sort_order')->value('sort_order');
+            // Conserva el primer orden en que cada categoría aparece en el
+            // archivo, incluso si sus productos ocupan varias filas.
+            $categoryOrder = [];
+            $productOrder = [];
 
             $prepared = [];
             foreach ($rows as $offset => $row) {
@@ -81,22 +85,35 @@ class ProductSpreadsheetImporter
                     $detail = $this->inferredDetail($code);
                     $report['inferred_details']++;
                 }
-                $category = $this->resolveCategory($data, $defaultCategory);
+                $category = $this->resolveCategory($data, $defaultCategory, $categoryOrder);
+                $variant = ProductVariant::with('product')->where('code', $code)->first();
                 $product = Product::where('slug', Str::slug($detail))->first();
+
+                // El código es la identidad del artículo. Si el detalle se
+                // renombra en el Excel y era su única variante, reutilizamos
+                // la tarjeta existente en lugar de dejar una tarjeta vieja.
+                if (!$product && $variant?->product && !$variant->product->variants()
+                    ->whereKeyNot($variant->id)
+                    ->exists()) {
+                    $product = $variant->product;
+                }
                 if (!$product) {
-                    $nextProductOrder = OrderCode::next($nextProductOrder);
                     $product = Product::create([
                         'category_id' => $category->id,
                         'name' => $detail,
                         'slug' => Str::slug($detail),
                         'main_image' => null,
                         'is_active' => true,
-                        'sort_order' => $nextProductOrder,
+                        'sort_order' => 'A',
                     ]);
                     $report['products_created']++;
                 }
 
-                $productAttributes = ['category_id' => $category->id];
+                $productAttributes = [
+                    'category_id' => $category->id,
+                    'name' => $detail,
+                    'slug' => Str::slug($detail),
+                ];
                 $productMedia = $mediaByProduct[Str::slug($detail)] ?? ['photo' => null, 'video' => null];
                 if ($photo = $productMedia['photo']) {
                     $newPhotoKey = pathinfo(basename(str_replace('\\', '/', $photo)), PATHINFO_FILENAME);
@@ -120,6 +137,7 @@ class ProductSpreadsheetImporter
                 }
                 $product->fill($productAttributes);
                 if ($product->isDirty()) $product->save();
+                $this->rememberProductOrder($productOrder, $product);
 
                 $attributes = [
                     'product_id' => $product->id,
@@ -136,7 +154,6 @@ class ProductSpreadsheetImporter
                     'is_active' => true,
                 ];
 
-                $variant = ProductVariant::where('code', $code)->first();
                 if (!$variant) {
                     $variant = ProductVariant::create(['code' => $code, ...$attributes]);
                     $report['created']++;
@@ -159,6 +176,10 @@ class ProductSpreadsheetImporter
                     'row' => $excelRow, 'code' => $code, 'action' => 'Actualizado', 'fields' => $dirty,
                 ]);
             }
+
+            $this->removeAbsentInventory(array_keys($prepared), $report);
+            $this->applySpreadsheetCategoryOrder($categoryOrder);
+            $this->applySpreadsheetProductOrder($productOrder);
 
             return $report;
         });
@@ -209,6 +230,7 @@ class ProductSpreadsheetImporter
             && collect($units)->filter(fn ($value) => filled($value))->isNotEmpty();
         $headers = [];
         $headerLabels = [];
+        $headerOccurrences = [];
         foreach ($base as $column => $value) {
             $label = trim((string) $value);
             $header = $this->normalize($label);
@@ -217,14 +239,22 @@ class ProductSpreadsheetImporter
             $header = match ($header) {
                 'precio_lista_u_s', 'precio_lista_us' => 'precio_lista_us',
                 'precio_final_u_s', 'precio_final_us' => 'precio_final_us',
+                'orden_categoria_principal' => 'orden_categoria',
+                'orden_subcategoria' => 'orden_sub_categoria',
+                'orden_subsubcategoria' => 'orden_sub_sub_categoria',
                 'stock_fisico' => 'stock_fisico',
                 'stock_en_transito' => 'stock_en_transito',
                 'cantidad_solicitada' => 'cantidad_solicitada',
                 default => $header,
             };
             if ($header === '') $header = '__ignorar_'.$column;
+            $baseHeader = $header;
+            $headerOccurrences[$baseHeader] = ($headerOccurrences[$baseHeader] ?? 0) + 1;
+            if ($headerOccurrences[$baseHeader] > 1) {
+                $header .= '_'.$headerOccurrences[$baseHeader];
+            }
             $headers[] = $header;
-            $headerLabels[$header] = $this->characteristicLabel($header, $label);
+            $headerLabels[$header] = $this->characteristicLabel($baseHeader, $label);
         }
         $dataIndex = $headerIndex + ($hasUnitRow ? 2 : 1);
 
@@ -378,15 +408,19 @@ class ProductSpreadsheetImporter
         return trim((string) $value);
     }
 
-    private function resolveCategory(array $data, Category $default): Category
+    private function resolveCategory(array $data, Category $default, array &$categoryOrder): Category
     {
         $categoryName = $this->nullableString($data['categoria'] ?? null);
-        if (!$categoryName) return $default;
+        if (!$categoryName) {
+            $this->rememberCategoryOrder($categoryOrder, $default);
+            return $default;
+        }
 
         $parent = Category::firstOrCreate(
             ['parent_id' => null, 'name' => $categoryName],
             ['slug' => Str::slug($categoryName), 'is_active' => true, 'sort_order' => 0]
         );
+        $this->rememberCategoryOrder($categoryOrder, $parent, $data['orden_categoria'] ?? null);
 
         $subcategoryName = $this->nullableString($data['sub_categoria'] ?? $data['subcategoria'] ?? null);
         if (!$subcategoryName) return $parent;
@@ -395,14 +429,111 @@ class ProductSpreadsheetImporter
             ['parent_id' => $parent->id, 'name' => $subcategoryName],
             ['slug' => $this->availableSlug(Str::slug($subcategoryName), $parent->id, $categoryName.'-'.$subcategoryName), 'is_active' => true, 'sort_order' => 0]
         );
+        $this->rememberCategoryOrder($categoryOrder, $subcategory, $data['orden_sub_categoria'] ?? $data['orden_subcategoria'] ?? null);
 
         $thirdName = $this->nullableString($data['sub_sub_categoria'] ?? null);
         if (!$thirdName) return $subcategory;
 
-        return Category::firstOrCreate(
+        $thirdCategory = Category::firstOrCreate(
             ['parent_id' => $subcategory->id, 'name' => $thirdName],
             ['slug' => $this->availableSlug(Str::slug($thirdName), $subcategory->id, $categoryName.'-'.$subcategoryName.'-'.$thirdName), 'is_active' => true, 'sort_order' => 0]
         );
+        $this->rememberCategoryOrder($categoryOrder, $thirdCategory, $data['orden_sub_sub_categoria'] ?? $data['orden_subsubcategoria'] ?? null);
+
+        return $thirdCategory;
+    }
+
+    private function rememberCategoryOrder(array &$categoryOrder, Category $category, mixed $spreadsheetOrder = null): void
+    {
+        $scope = $category->parent_id === null ? 'root' : (string) $category->parent_id;
+        $categoryOrder[$scope] ??= [];
+        $order = $this->nullableString($spreadsheetOrder);
+        if (!isset($categoryOrder[$scope][$category->id])) {
+            $categoryOrder[$scope][$category->id] = [
+                'id' => $category->id,
+                'first_seen' => count($categoryOrder[$scope]),
+                'spreadsheet_order' => $order,
+            ];
+        } elseif ($categoryOrder[$scope][$category->id]['spreadsheet_order'] === null && $order !== null) {
+            $categoryOrder[$scope][$category->id]['spreadsheet_order'] = $order;
+        }
+    }
+
+    private function applySpreadsheetCategoryOrder(array $categoryOrder): void
+    {
+        foreach ($categoryOrder as $scope => $records) {
+            $records = array_values($records);
+            usort($records, function (array $left, array $right): int {
+                $leftOrder = $left['spreadsheet_order'];
+                $rightOrder = $right['spreadsheet_order'];
+
+                if ($leftOrder !== null && $rightOrder !== null) {
+                    $comparison = strnatcasecmp($leftOrder, $rightOrder);
+                    if ($comparison !== 0) return $comparison;
+                } elseif ($leftOrder !== null) {
+                    return -1;
+                } elseif ($rightOrder !== null) {
+                    return 1;
+                }
+
+                return $left['first_seen'] <=> $right['first_seen'];
+            });
+            $orderedIds = array_column($records, 'id');
+            $siblings = Category::query()
+                ->when($scope === 'root', fn ($query) => $query->whereNull('parent_id'), fn ($query) => $query->where('parent_id', (int) $scope))
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->pluck('id')
+                ->all();
+
+            $ids = array_values(array_unique([...$orderedIds, ...$siblings]));
+            foreach ($ids as $index => $id) {
+                Category::whereKey($id)->update(['sort_order' => OrderCode::forIndex($index)]);
+            }
+        }
+    }
+
+    private function rememberProductOrder(array &$productOrder, Product $product): void
+    {
+        $scope = (string) $product->category_id;
+        $productOrder[$scope] ??= [];
+        if (!isset($productOrder[$scope][$product->id])) {
+            $productOrder[$scope][$product->id] = $product->id;
+        }
+    }
+
+    private function applySpreadsheetProductOrder(array $productOrder): void
+    {
+        foreach ($productOrder as $categoryId => $orderedProducts) {
+            $siblings = Product::query()
+                ->where('category_id', (int) $categoryId)
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->pluck('id')
+                ->all();
+            $ids = array_values(array_unique([...array_values($orderedProducts), ...$siblings]));
+
+            foreach ($ids as $index => $id) {
+                Product::whereKey($id)->update(['sort_order' => OrderCode::forIndex($index)]);
+            }
+        }
+    }
+
+    private function removeAbsentInventory(array $importedCodes, array &$report): void
+    {
+        $missingVariants = ProductVariant::query()
+            ->whereNotIn('code', $importedCodes)
+            ->pluck('id');
+        $report['variants_deleted'] = $missingVariants->count();
+        if ($missingVariants->isNotEmpty()) {
+            ProductVariant::whereIn('id', $missingVariants)->delete();
+        }
+
+        $orphanProducts = Product::query()->doesntHave('variants')->pluck('id');
+        $report['products_deleted'] = $orphanProducts->count();
+        if ($orphanProducts->isNotEmpty()) {
+            Product::whereIn('id', $orphanProducts)->delete();
+        }
     }
 
     private function availableSlug(string $base, int $parentId, string $fallback): string

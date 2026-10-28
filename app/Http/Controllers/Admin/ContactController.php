@@ -72,6 +72,8 @@ class ContactController extends Controller
             'email_sales' => ['value' => $data['contact_email'], 'type' => 'text'],
             'phone' => ['value' => implode("\n", $phones), 'type' => 'text'],
             'whatsapp' => ['value' => implode("\n", $whatsapps), 'type' => 'text'],
+            // El footer y el botón flotante abren el WhatsApp principal.
+            'whatsapp_number' => ['value' => preg_replace('/\D/', '', $whatsapps[0]), 'type' => 'text'],
         ];
 
         foreach ($settings as $key => $setting) {

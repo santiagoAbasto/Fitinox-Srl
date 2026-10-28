@@ -1,5 +1,5 @@
 import { Head, useForm } from '@inertiajs/react';
-import { Building2, CirclePlay, Image, Save, ShieldCheck, Target, Telescope, UploadCloud } from 'lucide-react';
+import { Building2, CirclePlay, Image, Save, ShieldCheck, Target, Telescope, Trash2, UploadCloud } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import AdminLayout from '../../Components/AdminLayout';
 import RichTextEditor from '../../Components/RichTextEditor';
@@ -7,15 +7,15 @@ import RichTextEditor from '../../Components/RichTextEditor';
 const input = 'mt-2 min-h-12 w-full rounded-lg border border-[#dfe4e7] bg-[#fbfcfc] px-4 text-sm outline-none transition focus:border-[#1954b7] focus:bg-white focus:ring-4 focus:ring-[#1954b7]/8';
 
 function Media({ label, path, file, onChange, ratio = 'aspect-[16/5]', recommendation = '1920 × 600 px' }: { label: string, path: string, file: File | null, onChange: (file: File | null) => void, ratio?: string, recommendation?: string }) {
-    const [preview, setPreview] = useState(`/storage/${path}`);
+    const [preview, setPreview] = useState(path ? `/storage/${path}` : '');
     const [dimensions, setDimensions] = useState('');
     useEffect(() => {
-        if (!file) return setPreview(`/storage/${path}`);
+        if (!file) return setPreview(path ? `/storage/${path}` : '');
         const url = URL.createObjectURL(file);
         setPreview(url);
         return () => URL.revokeObjectURL(url);
     }, [file, path]);
-    return <div><p className="mb-2 text-[12px] font-semibold">{label}</p><div className={`${ratio} overflow-hidden rounded-xl bg-[#eef2f4]`}><img src={preview} alt={`Vista previa de ${label}`} className="h-full w-full object-cover" onLoad={event=>setDimensions(`${event.currentTarget.naturalWidth} × ${event.currentTarget.naturalHeight} px`)}/></div><label className="mt-3 flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-[#bfc9ce] text-[12px] font-semibold text-[#52616a] hover:border-[#1954b7] hover:text-[#1954b7]"><UploadCloud size={16}/> Reemplazar imagen<input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={event => onChange(event.target.files?.[0] || null)}/></label><p className="mt-2 text-[10px] leading-4 text-[#7b878e]"><strong>Actual:</strong> {dimensions || 'leyendo…'} · <strong>Recomendado:</strong> {recommendation}.<br/>JPG, PNG o WebP · máximo 8 MB.</p></div>;
+    return <div><p className="mb-2 text-[12px] font-semibold">{label}</p><div className={`${ratio} grid overflow-hidden rounded-xl bg-[#eef2f4]`}><>{preview ? <img src={preview} alt={`Vista previa de ${label}`} className="h-full w-full object-cover" onLoad={event=>setDimensions(`${event.currentTarget.naturalWidth} × ${event.currentTarget.naturalHeight} px`)}/> : <span className="place-self-center text-[12px] text-[#7b878e]">Sin imagen cargada</span>}</></div><label className="mt-3 flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-[#bfc9ce] text-[12px] font-semibold text-[#52616a] hover:border-[#1954b7] hover:text-[#1954b7]"><UploadCloud size={16}/> {preview ? 'Reemplazar imagen' : 'Seleccionar imagen'}<input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={event => onChange(event.target.files?.[0] || null)}/></label><p className="mt-2 text-[10px] leading-4 text-[#7b878e]">{preview && <><strong>Actual:</strong> {dimensions || 'leyendo…'} · </>}<strong>Recomendado:</strong> {recommendation}.<br/>JPG, PNG o WebP · máximo 8 MB.</p></div>;
 }
 
 function Section({ id, title, description, icon: Icon, children }: any) {
@@ -31,7 +31,7 @@ export default function Edit({ page }: { page: any }) {
         mission_title: section.mission_title || 'Misión', mission_text: section.mission_text || '',
         vision_title: section.vision_title || 'Visión', vision_text: section.vision_text || '',
         quality_title: section.quality_title || 'Calidad', quality_text: section.quality_text || '',
-        video_cover: section.video_cover || 'figma/nosotros/video-cover.png', video_cover_file: null as File | null, video_url: section.video_url || '',
+        video_cover: section.video_cover || '', video_cover_file: null as File | null, video_url: section.video_url || '', remove_video: false,
     });
 
     return <AdminLayout title="Nosotros"><Head title="Nosotros | Fitinox"/>
@@ -56,7 +56,7 @@ export default function Edit({ page }: { page: any }) {
             </Section>
 
             <Section id="video" title="Video institucional" description="Portada y enlace de reproducción." icon={CirclePlay}>
-                <div className="grid gap-6"><Media label="Imagen de portada del video" path={form.data.video_cover} file={form.data.video_cover_file} recommendation="1920 × 1080 px (16:9)" onChange={file => form.setData('video_cover_file', file)}/><label className="block text-[12px] font-semibold">Enlace del video<input type="url" className={input} value={form.data.video_url} onChange={event => form.setData('video_url', event.target.value)} placeholder="https://youtube.com/watch?v=…"/><span className="mt-1.5 block text-[10px] font-normal text-[#7b878e]">Formatos admitidos: YouTube o Vimeo mediante URL. Si queda vacío, se mantiene la portada sin enlace.</span></label></div>
+                <div className="grid gap-6"><Media label="Imagen de portada del video" path={form.data.video_cover} file={form.data.video_cover_file} recommendation="1920 × 1080 px (16:9)" onChange={file => { form.setData('video_cover_file', file); form.setData('remove_video', false); }}/><label className="block text-[12px] font-semibold">Enlace del video<input type="url" className={input} value={form.data.video_url} onChange={event => { form.setData('video_url', event.target.value); form.setData('remove_video', false); }} placeholder="https://youtube.com/watch?v=…"/><span className="mt-1.5 block text-[10px] font-normal text-[#7b878e]">Formatos admitidos: YouTube o Vimeo mediante URL. Si no hay portada y enlace, el bloque no se muestra en la web.</span></label><div className="border-t border-[#edf0f2] pt-5"><button type="button" onClick={() => { form.setData('video_cover', ''); form.setData('video_cover_file', null); form.setData('video_url', ''); form.setData('remove_video', true); }} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-red-200 px-4 text-[12px] font-semibold text-red-700 hover:bg-red-50"><Trash2 size={16}/> QUITAR VIDEO INSTITUCIONAL</button><p className="mt-2 text-[10px] text-[#7b878e]">Al guardar se elimina la portada y el enlace. El bloque desaparece de la web hasta que se vuelva a cargar.</p></div></div>
             </Section>
 
             {Object.keys(form.errors).length > 0 && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800">Revisá los campos indicados antes de guardar.</div>}

@@ -84,6 +84,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/nosotros', [AdminAboutController::class, 'edit'])->name('about.edit');
     Route::post('/nosotros', [AdminAboutController::class, 'update'])->name('about.update');
     Route::resource('pages', PageController::class)->only(['index', 'edit', 'update']);
+    Route::post('categories/banner', [CategoryController::class, 'updateProductsBanner'])->name('categories.banner.update');
     Route::resource('categories', CategoryController::class)->except(['create', 'show']);
     Route::delete('/products/inventory/all', [AdminProductController::class, 'destroyInventory'])->middleware('admin.level:admin')->name('products.inventory.destroy');
     Route::resource('products', AdminProductController::class)->except(['create', 'show'])->middleware('admin.level:admin');

@@ -194,7 +194,24 @@ class ProductSpreadsheetImporterTest extends TestCase
         );
     }
 
-    public function test_it_updates_the_inventory_without_removing_absent_products_or_media(): void
+    public function test_it_preserves_repeated_technical_headers_instead_of_overwriting_their_values(): void
+    {
+        $csv = implode("\n", [
+            'CATEGORIA;SUBCATEGORIA;CODIGO;DETALLE;CALIDAD;MEDIDA;MEDIDA',
+            'Válvulas;Salidas múltiples;VM-742-CSBS6-08MH;Válvula múltiple;AISI 316;1/2" NPT Hembra;Serie 6000',
+        ]);
+
+        app(ProductSpreadsheetImporter::class)->import(
+            UploadedFile::fake()->createWithContent('medidas-repetidas.csv', $csv)
+        );
+
+        $variant = ProductVariant::where('code', 'VM-742-CSBS6-08MH')->firstOrFail();
+        $this->assertSame('AISI 316', $variant->characteristicValue('calidad'));
+        $this->assertSame('1/2" NPT Hembra', $variant->characteristicValue('medida'));
+        $this->assertSame('Serie 6000', $variant->characteristicValue('medida_2'));
+    }
+
+    public function test_it_removes_products_and_codes_that_are_absent_from_the_spreadsheet(): void
     {
         Storage::fake('public');
         $category = Category::create(['name' => 'Vieja', 'slug' => 'vieja', 'is_active' => true, 'sort_order' => 0]);
@@ -220,13 +237,99 @@ class ProductSpreadsheetImporterTest extends TestCase
             UploadedFile::fake()->createWithContent('inventario.csv', $csv)
         );
 
-        $this->assertSame(0, $report['variants_deleted']);
-        $this->assertSame(0, $report['products_deleted']);
+        $this->assertSame(1, $report['variants_deleted']);
+        $this->assertSame(1, $report['products_deleted']);
         $this->assertSame(0, $report['files_deleted']);
-        $this->assertDatabaseHas('product_variants', ['code' => 'CODIGO-VIEJO']);
-        $this->assertDatabaseHas('products', ['slug' => 'producto-viejo']);
+        $this->assertDatabaseMissing('product_variants', ['code' => 'CODIGO-VIEJO']);
+        $this->assertDatabaseMissing('products', ['slug' => 'producto-viejo']);
         $this->assertDatabaseHas('product_variants', ['code' => 'CODIGO-NUEVO']);
         Storage::disk('public')->assertExists('products/images/vieja.jpg');
         Storage::disk('public')->assertExists('products/videos/viejo.mp4');
+    }
+
+    public function test_it_renames_a_single_variant_product_instead_of_leaving_an_old_card(): void
+    {
+        $category = Category::create(['name' => 'Acoples', 'slug' => 'acoples', 'is_active' => true, 'sort_order' => 'A']);
+        $oldProduct = Product::create([
+            'category_id' => $category->id,
+            'name' => 'Acople PIN Sin Retención',
+            'slug' => 'acople-pin-sin-retencion',
+            'is_active' => true,
+            'sort_order' => 'A',
+        ]);
+        $oldProduct->variants()->create(['code' => 'AR-QCNSR63-04', 'detail' => 'Acople PIN Sin Retención', 'is_active' => true]);
+
+        app(ProductSpreadsheetImporter::class)->import(
+            UploadedFile::fake()->createWithContent('acoples.csv', implode("\n", [
+                'CODIGO;DETALLE;CATEGORIA;SUBCATEGORIA',
+                'AR-QCNSR63-04;Acople PIN Tubo Sin Retencion;Accesorios para tubos;Acoples rápidos',
+            ]))
+        );
+
+        $this->assertDatabaseCount('products', 1);
+        $this->assertDatabaseHas('products', ['id' => $oldProduct->id, 'name' => 'Acople PIN Tubo Sin Retencion']);
+        $this->assertDatabaseMissing('products', ['name' => 'Acople PIN Sin Retención']);
+    }
+
+    public function test_it_orders_products_inside_each_category_by_their_first_spreadsheet_row(): void
+    {
+        app(ProductSpreadsheetImporter::class)->import(
+            UploadedFile::fake()->createWithContent('orden-productos.csv', implode("\n", [
+                'CODIGO;DETALLE;CATEGORIA;SUBCATEGORIA',
+                'AR-001;Acople PIN Tubo Sin Retencion;Accesorios para tubos;Acoples rápidos',
+                'AR-002;Acople PIN Pasachapa Tubo Sin Retencion;Accesorios para tubos;Acoples rápidos',
+                'AR-003;Acople PIN Macho Sin Retencion;Accesorios para tubos;Acoples rápidos',
+            ]))
+        );
+
+        $this->assertSame(
+            ['Acople PIN Tubo Sin Retencion', 'Acople PIN Pasachapa Tubo Sin Retencion', 'Acople PIN Macho Sin Retencion'],
+            Product::query()->orderBy('sort_order')->pluck('name')->all()
+        );
+    }
+    public function test_it_keeps_subcategories_in_their_first_spreadsheet_order(): void
+    {
+        $csv = implode("\n", [
+            'CODIGO;DETALLE;CATEGORIA;SUBCATEGORIA',
+            'AJA-001;Conector uno;Accesorios para tubos;Conectores AJA-LOCK',
+            'AJA-002;Conector dos;Accesorios para tubos;Conectores AJA-LOCK',
+            'TUB-001;Tubo uno;Accesorios para tubos;Tubos',
+            'HER-001;Herramienta;Accesorios para tubos;Herramientas',
+        ]);
+
+        app(ProductSpreadsheetImporter::class)->import(
+            UploadedFile::fake()->createWithContent('orden.csv', $csv)
+        );
+
+        $this->assertSame(
+            ['Conectores AJA-LOCK', 'Tubos', 'Herramientas'],
+            Category::whereHas('parent', fn ($query) => $query->where('name', 'Accesorios para tubos'))
+                ->orderBy('sort_order')
+                ->pluck('name')
+                ->all()
+        );
+    }
+
+    public function test_it_uses_the_optional_spreadsheet_order_columns_for_categories(): void
+    {
+        $csv = implode("\n", [
+            'CODIGO;DETALLE;CATEGORIA;ORDEN_CATEGORIA;SUBCATEGORIA;ORDEN_SUB_CATEGORIA',
+            'HER-001;Herramienta;Accesorios para tubos;1;Herramientas;1.4',
+            'TUB-001;Tubo;Accesorios para tubos;1;Tubos;1.2',
+            'AJA-001;Conector;Accesorios para tubos;1;Conectores AJA-LOCK;1.1',
+            'SOP-001;Soporte;Accesorios para tubos;1;Soportes;1.3',
+        ]);
+
+        app(ProductSpreadsheetImporter::class)->import(
+            UploadedFile::fake()->createWithContent('orden-explicito.csv', $csv)
+        );
+
+        $this->assertSame(
+            ['Conectores AJA-LOCK', 'Tubos', 'Soportes', 'Herramientas'],
+            Category::whereHas('parent', fn ($query) => $query->where('name', 'Accesorios para tubos'))
+                ->orderBy('sort_order')
+                ->pluck('name')
+                ->all()
+        );
     }
 }

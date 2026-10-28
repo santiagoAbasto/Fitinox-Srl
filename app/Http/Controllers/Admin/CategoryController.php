@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Support\OrderCode;
@@ -21,7 +22,24 @@ class CategoryController extends Controller
             'categories' => $categories,
             'parentOptions' => $this->parentOptions($categories),
             'nextOrder' => OrderCode::next(Category::orderByDesc('sort_order')->value('sort_order')),
+            'productsBanner' => Setting::where('key', 'products_hero_image')->value('value'),
         ]);
+    }
+
+    public function updateProductsBanner(Request $request)
+    {
+        $data = $request->validate([
+            'image_file' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:12288'],
+        ]);
+
+        $previousImage = Setting::where('key', 'products_hero_image')->value('value');
+        $image = $data['image_file']->store('settings/products', 'public');
+        Setting::updateOrCreate(['key' => 'products_hero_image'], [
+            'group' => 'products', 'value' => $image, 'type' => 'text',
+        ]);
+        if (filled($previousImage)) Storage::disk('public')->delete($previousImage);
+
+        return back()->with('success', 'Banner de Productos actualizado.');
     }
 
     public function store(Request $request)
@@ -78,7 +96,7 @@ class CategoryController extends Controller
             throw ValidationException::withMessages(['parent_id' => 'No se puede mover una categoría dentro de una de sus descendientes.']);
         }
 
-        $requiresImage = !$parentId && (!$category || !$category->image);
+        $requiresImage = !$category || !$category->image;
         $data = $request->validate([
             'parent_id' => ['nullable', 'integer', 'exists:categories,id'],
             'name' => ['required', 'max:160'],

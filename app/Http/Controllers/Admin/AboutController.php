@@ -7,6 +7,7 @@ use App\Models\Page;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Services\HtmlSanitizer;
+use Illuminate\Support\Facades\Storage;
 
 class AboutController extends Controller
 {
@@ -37,15 +38,26 @@ class AboutController extends Controller
             'video_cover' => ['nullable', 'max:255'],
             'video_cover_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:12288'],
             'video_url' => ['nullable', 'max:500'],
+            'remove_video' => ['boolean'],
         ]);
 
         $page = Page::where('slug', 'nosotros')->firstOrFail();
         $sections = $page->sections ?? [];
-        foreach (['content_title', 'values_title', 'mission_title', 'mission_text', 'vision_title', 'vision_text', 'quality_title', 'quality_text', 'video_url'] as $key) {
+        foreach (['content_title', 'values_title', 'mission_title', 'mission_text', 'vision_title', 'vision_text', 'quality_title', 'quality_text'] as $key) {
             $sections[$key] = $data[$key];
         }
         $sections['content_image'] = $request->file('content_image_file')?->store('nosotros/content', 'public') ?? $data['content_image'];
-        $sections['video_cover'] = $request->file('video_cover_file')?->store('nosotros/video', 'public') ?? $data['video_cover'];
+
+        if ($request->boolean('remove_video')) {
+            $previousCover = $sections['video_cover'] ?? null;
+            unset($sections['video_cover'], $sections['video_url']);
+            if (is_string($previousCover) && str_starts_with($previousCover, 'nosotros/video/')) {
+                Storage::disk('public')->delete($previousCover);
+            }
+        } else {
+            $sections['video_url'] = $data['video_url'];
+            $sections['video_cover'] = $request->file('video_cover_file')?->store('nosotros/video', 'public') ?? $data['video_cover'];
+        }
 
         $page->update([
             'hero_title' => $data['hero_title'],

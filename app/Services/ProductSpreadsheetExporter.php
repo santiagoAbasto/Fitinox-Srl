@@ -102,6 +102,9 @@ class ProductSpreadsheetExporter
                     'category' => $grandparent?->name ?: $parent?->name ?: $category?->name ?: '',
                     'subcategory' => $grandparent ? $parent->name : ($parent ? $category->name : ''),
                     'third_category' => $grandparent ? $category->name : '',
+                    'category_order' => $grandparent?->sort_order ?: $parent?->sort_order ?: $category?->sort_order ?: '',
+                    'subcategory_order' => $grandparent ? ($parent->sort_order ?: '') : ($parent ? ($category->sort_order ?: '') : ''),
+                    'third_category_order' => $grandparent ? ($category->sort_order ?: '') : '',
                     'characteristics' => collect($characteristicColumns)
                         ->mapWithKeys(fn ($label, $key) => [$key => $variant->characteristicValue($key)])
                         ->all(),
@@ -132,7 +135,7 @@ class ProductSpreadsheetExporter
         }
 
         $headers = [
-            'Categoría', 'Sub categoría', 'Sub sub categoría', 'Código', 'Detalle',
+            'Categoría', 'Orden categoría', 'Sub categoría', 'Orden sub categoría', 'Sub sub categoría', 'Orden sub sub categoría', 'Código', 'Detalle',
             ...array_values($characteristicColumns),
             'Foto', 'Video', 'Precio lista u$s', 'Stock físico', 'Stock en tránsito',
         ];
@@ -160,7 +163,8 @@ class ProductSpreadsheetExporter
             $record = $data[$number - 2] ?? null;
             if ($record) {
                 $values = [
-                    $record['category'], $record['subcategory'], $record['third_category'], $record['code'], $record['detail'],
+                    $record['category'], $record['category_order'], $record['subcategory'], $record['subcategory_order'],
+                    $record['third_category'], $record['third_category_order'], $record['code'], $record['detail'],
                     ...array_map(fn ($key) => $record['characteristics'][$key] ?? null, array_keys($characteristicColumns)),
                     $record['photo'], $record['video'],
                 ];
@@ -197,9 +201,10 @@ class ProductSpreadsheetExporter
         while ($columns->firstChild) $columns->removeChild($columns->firstChild);
         foreach ($headers as $index => $header) {
             $width = match ($index) {
-                0, 1, 2 => 24,
-                3 => 20,
-                4 => 28,
+                0, 2, 4 => 24,
+                1, 3, 5 => 18,
+                6 => 20,
+                7 => 28,
                 default => match ($header) {
                     'Foto', 'Video' => 24,
                     'Precio lista u$s' => 17,

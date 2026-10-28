@@ -16,17 +16,18 @@ function Switch({ checked, onChange, label, description }: { checked: boolean; o
     </label>;
 }
 
-export default function Index({ categories, parentOptions, nextOrder }: { categories: any[]; parentOptions: any[]; nextOrder: string }) {
+export default function Index({ categories, parentOptions, nextOrder, productsBanner }: { categories: any[]; parentOptions: any[]; nextOrder: string; productsBanner?: string }) {
     const form = useForm<any>({ parent_id: '', name: '', description: '', image_file: null, is_featured: false, is_active: true, sort_order: nextOrder });
+    const bannerForm = useForm<any>({ image_file: null });
     const [preview, setPreview] = useState('');
+    const [bannerPreview, setBannerPreview] = useState('');
     const [dimensions, setDimensions] = useState('');
     const isMainCategory = !form.data.parent_id;
     const mainCategories = categories.filter(category => !category.parent_id);
     const subCategories = categories.filter(category => category.parent_id && !category.parent?.parent_id);
     const thirdLevelCategories = categories.filter(category => category.parent?.parent_id);
     const selectedParent = parentOptions.find(option => option.id === Number(form.data.parent_id));
-    const inheritedImagePath = selectedParent?.effective_image || '';
-    const displayedPreview = preview || (inheritedImagePath ? `/storage/${inheritedImagePath}` : '');
+    const displayedPreview = preview;
     const newLevelName = !selectedParent ? 'categoría principal' : selectedParent.level === 1 ? 'subcategoría' : 'sub-subcategoría';
     const mainParentOptions = parentOptions.filter(option => option.level === 1);
     const subParentOptions = parentOptions.filter(option => option.level === 2);
@@ -39,6 +40,13 @@ export default function Index({ categories, parentOptions, nextOrder }: { catego
     }, [form.data.image_file]);
 
     return <AdminLayout title="Categorías"><Head title="Categorías | Fitinox"/>
+        <section className="mb-7 overflow-hidden rounded-2xl border border-[#dfe5e8] bg-white shadow-[0_10px_35px_rgba(19,43,59,.05)]">
+            <header className="flex items-center gap-4 border-b border-[#edf0f2] px-6 py-5"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#edf3f7] text-[#1954b7]"><ImageIcon size={20}/></span><div><h2 className="text-[15px] font-semibold text-[#132b3b]">Banner de Productos</h2><p className="mt-1 text-[11px] text-[#758189]">Esta imagen aparece al entrar a Productos y a sus categorías principales.</p></div></header>
+            <form onSubmit={event=>{event.preventDefault(); bannerForm.post('/admin/categories/banner',{forceFormData:true,preserveScroll:true,onSuccess:()=>{bannerForm.reset(); setBannerPreview('');}});}} className="grid gap-5 p-6 md:grid-cols-[300px_1fr]">
+                <div className="aspect-[16/6] overflow-hidden rounded-xl bg-[#132b3b] md:h-[150px] md:aspect-auto"><img src={bannerPreview || (productsBanner ? `/storage/${productsBanner}` : '/storage/figma/about.png')} alt="Banner de Productos" className="h-full w-full object-cover"/></div>
+                <div className="flex flex-col justify-center"><label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-dashed border-[#b8c7cf] px-4 text-[12px] font-semibold text-[#52616a] transition hover:border-[#1954b7] hover:text-[#1954b7]"><UploadCloud size={18}/><span>{bannerForm.data.image_file?.name || 'Seleccionar imagen del banner'}</span><input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={event=>{const file=event.target.files?.[0] || null; if (bannerPreview) URL.revokeObjectURL(bannerPreview); setBannerPreview(file ? URL.createObjectURL(file) : ''); bannerForm.setData('image_file', file);}}/></label><p className="mt-2 text-[10px] text-[#7b878e]">Recomendado: 1920 × 700 px · JPG, PNG o WebP · máximo 12 MB.</p>{bannerForm.errors.image_file&&<p className="mt-2 text-[11px] text-red-600">{bannerForm.errors.image_file}</p>}<div className="mt-4"><button disabled={bannerForm.processing || !bannerForm.data.image_file} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#1954b7] px-5 text-[11px] font-semibold text-white disabled:opacity-45"><UploadCloud size={15}/>{bannerForm.processing?'SUBIENDO…':'GUARDAR BANNER'}</button></div></div>
+            </form>
+        </section>
         <form onSubmit={event => {
             event.preventDefault();
             form.post('/admin/categories', {
@@ -52,7 +60,7 @@ export default function Index({ categories, parentOptions, nextOrder }: { catego
         }} className="mb-7 overflow-hidden rounded-2xl border border-[#dfe5e8] bg-white shadow-[0_10px_35px_rgba(19,43,59,.05)]">
             <header className="flex items-center gap-4 border-b border-[#edf0f2] px-6 py-5">
                 <span className="grid size-11 place-items-center rounded-xl bg-[#edf3f7] text-[#1954b7]"><Plus size={20}/></span>
-                <div><h2 className="text-[15px] font-semibold text-[#132b3b]">Nueva {newLevelName}</h2><p className="mt-1 text-[11px] text-[#758189]">{isMainCategory ? 'Crea la tarjeta pública y define si también aparece en la Home.' : `Se mostrará como tarjeta dentro de ${selectedParent?.path}. Podés subirle una imagen propia o dejar que herede la de su categoría superior.`}</p></div>
+                <div><h2 className="text-[15px] font-semibold text-[#132b3b]">Nueva {newLevelName}</h2><p className="mt-1 text-[11px] text-[#758189]">{isMainCategory ? 'Crea la tarjeta pública y define si también aparece en la Home.' : `Se mostrará como tarjeta dentro de ${selectedParent?.path}. Cada tarjeta tiene su propia imagen.`}</p></div>
             </header>
             <div className="grid gap-6 p-6 lg:grid-cols-[280px_1fr]">
                 <div>
@@ -63,7 +71,7 @@ export default function Index({ categories, parentOptions, nextOrder }: { catego
                         <UploadCloud size={17}/> {form.data.image_file?.name || (isMainCategory ? 'Seleccionar imagen' : 'Subir imagen propia')}
                         <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={event => form.setData('image_file', event.target.files?.[0] || null)}/>
                     </label>
-                    <p className="mt-2 text-[10px] leading-4 text-[#7b878e]">{displayedPreview && <><strong>{preview ? 'Seleccionada' : 'Imagen heredada'}:</strong> {dimensions || 'leyendo dimensiones…'}.<br/></>}<strong>Recomendado:</strong> 1200 × 1200 px (1:1).<br/>JPG, PNG o WebP · máximo 5 MB.{!isMainCategory && <><br/>Si no subís una imagen, se usará automáticamente la de la categoría superior.</>}</p>
+                    <p className="mt-2 text-[10px] leading-4 text-[#7b878e]">{displayedPreview && <><strong>Seleccionada:</strong> {dimensions || 'leyendo dimensiones…'}.<br/></>}<strong>Recomendado:</strong> 1200 × 1200 px (1:1).<br/>JPG, PNG o WebP · máximo 5 MB.<br/>La imagen es propia de esta categoría.</p>
                     {form.errors.image_file && <p className="mt-2 text-[11px] text-red-600">{form.errors.image_file}</p>}
                 </div>
                 <div className="grid content-start gap-5">
@@ -98,11 +106,11 @@ export default function Index({ categories, parentOptions, nextOrder }: { catego
         </section>
 
         <section className="mb-7 overflow-hidden rounded-2xl border border-[#dfe5e8] bg-white">
-            <header className="flex items-center gap-4 border-b border-[#edf0f2] px-6 py-5"><span className="grid size-10 place-items-center rounded-xl bg-[#edf3f7] text-[#1954b7]"><FolderTree size={18}/></span><div><div className="flex items-center gap-2"><span className="rounded-full bg-[#eaf2fb] px-2.5 py-1 text-[9px] font-semibold text-[#1954b7]">NIVEL 2</span><h2 className="text-[15px] font-semibold text-[#132b3b]">Subcategorías</h2></div><p className="mt-1 text-[11px] text-[#758189]">Se muestran como tarjetas dentro de la categoría principal. La imagen propia es opcional y, si falta, se hereda.</p></div></header>
+            <header className="flex items-center gap-4 border-b border-[#edf0f2] px-6 py-5"><span className="grid size-10 place-items-center rounded-xl bg-[#edf3f7] text-[#1954b7]"><FolderTree size={18}/></span><div><div className="flex items-center gap-2"><span className="rounded-full bg-[#eaf2fb] px-2.5 py-1 text-[9px] font-semibold text-[#1954b7]">NIVEL 2</span><h2 className="text-[15px] font-semibold text-[#132b3b]">Subcategorías</h2></div><p className="mt-1 text-[11px] text-[#758189]">Se muestran como tarjetas dentro de la categoría principal. Cada una usa su propia imagen.</p></div></header>
             <table className="w-full text-left text-[12px]">
                 <thead className="bg-[#132b3b] text-white"><tr><th className="px-6 py-4">Subcategoría</th><th>Categoría principal</th><th>Productos</th><th>Publicación</th><th className="pr-6 text-right">Acciones</th></tr></thead>
                 <tbody>{subCategories.map(category => <tr key={category.id} className="border-t border-[#edf0f2]">
-                    <td className="px-6 py-4"><div className="flex items-center gap-4"><div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#e5eaed] bg-[#f5f7f8]">{(category.image || category.parent?.image) ? <img src={`/storage/${category.image || category.parent?.image}`} className="h-full w-full object-cover" alt=""/> : <ImageIcon size={20} className="text-[#9ba8ae]"/>}</div><div><strong className="block text-[13px] text-[#263b45]">{category.name}</strong><small className="mt-1 block text-[#829097]">Orden {category.sort_order} · {category.image ? 'Imagen propia' : 'Imagen heredada'}</small></div></div></td>
+                    <td className="px-6 py-4"><div className="flex items-center gap-4"><div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#e5eaed] bg-[#f5f7f8]">{category.image ? <img src={`/storage/${category.image}`} className="h-full w-full object-cover" alt=""/> : <ImageIcon size={20} className="text-[#9ba8ae]"/>}</div><div><strong className="block text-[13px] text-[#263b45]">{category.name}</strong><small className="mt-1 block text-[#829097]">Orden {category.sort_order} · {category.image ? 'Imagen propia' : 'Sin imagen'}</small></div></div></td>
                     <td><span className="text-[11px] font-medium text-[#52616a]">{category.parent?.name}</span></td>
                     <td>{category.products_count}</td>
                     <td><span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-semibold ${category.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-[#f1f3f4] text-[#728087]'}`}>{category.is_active ? <Eye size={12}/> : <EyeOff size={12}/>} {category.is_active ? 'Visible' : 'Oculta'}</span></td>
@@ -112,11 +120,11 @@ export default function Index({ categories, parentOptions, nextOrder }: { catego
         </section>
 
         <section className="overflow-hidden rounded-2xl border border-[#dfe5e8] bg-white">
-            <header className="flex items-center gap-4 border-b border-[#edf0f2] px-6 py-5"><span className="grid size-10 place-items-center rounded-xl bg-[#edf3f7] text-[#1954b7]"><FolderTree size={18}/></span><div><div className="flex items-center gap-2"><span className="rounded-full bg-[#f1f3f4] px-2.5 py-1 text-[9px] font-semibold text-[#52616a]">NIVEL 3</span><h2 className="text-[15px] font-semibold text-[#132b3b]">Sub-subcategorías</h2></div><p className="mt-1 text-[11px] text-[#758189]">Son el último nivel del catálogo y también pueden tener imagen propia o heredarla de sus niveles superiores.</p></div></header>
+            <header className="flex items-center gap-4 border-b border-[#edf0f2] px-6 py-5"><span className="grid size-10 place-items-center rounded-xl bg-[#edf3f7] text-[#1954b7]"><FolderTree size={18}/></span><div><div className="flex items-center gap-2"><span className="rounded-full bg-[#f1f3f4] px-2.5 py-1 text-[9px] font-semibold text-[#52616a]">NIVEL 3</span><h2 className="text-[15px] font-semibold text-[#132b3b]">Sub-subcategorías</h2></div><p className="mt-1 text-[11px] text-[#758189]">Son el último nivel del catálogo y cada una usa su propia imagen.</p></div></header>
             <table className="w-full text-left text-[12px]">
                 <thead className="bg-[#132b3b] text-white"><tr><th className="px-6 py-4">Sub-subcategoría</th><th>Ruta completa</th><th>Productos</th><th>Publicación</th><th className="pr-6 text-right">Acciones</th></tr></thead>
                 <tbody>{thirdLevelCategories.map(category => <tr key={category.id} className="border-t border-[#edf0f2]">
-                    <td className="px-6 py-4"><div className="flex items-center gap-4"><div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#e5eaed] bg-[#f5f7f8]">{(category.image || category.parent?.image || category.parent?.parent?.image) ? <img src={`/storage/${category.image || category.parent?.image || category.parent?.parent?.image}`} className="h-full w-full object-cover" alt=""/> : <ImageIcon size={20} className="text-[#9ba8ae]"/>}</div><div><strong className="block text-[13px] text-[#263b45]">{category.name}</strong><small className="mt-1 block text-[#829097]">Orden {category.sort_order} · {category.image ? 'Imagen propia' : 'Imagen heredada'}</small></div></div></td>
+                    <td className="px-6 py-4"><div className="flex items-center gap-4"><div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#e5eaed] bg-[#f5f7f8]">{category.image ? <img src={`/storage/${category.image}`} className="h-full w-full object-cover" alt=""/> : <ImageIcon size={20} className="text-[#9ba8ae]"/>}</div><div><strong className="block text-[13px] text-[#263b45]">{category.name}</strong><small className="mt-1 block text-[#829097]">Orden {category.sort_order} · {category.image ? 'Imagen propia' : 'Sin imagen'}</small></div></div></td>
                     <td><span className="text-[11px] text-[#52616a]">{category.parent?.parent?.name} <span className="text-[#9aa5aa]">›</span> {category.parent?.name}</span></td>
                     <td>{category.products_count}</td>
                     <td><span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-semibold ${category.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-[#f1f3f4] text-[#728087]'}`}>{category.is_active ? <Eye size={12}/> : <EyeOff size={12}/>} {category.is_active ? 'Visible' : 'Oculta'}</span></td>
