@@ -15,17 +15,17 @@
 
 <img src="docs/readme/divider.svg" alt="" width="100%">
 
-## 📑 Contenido
+## <img src="docs/readme/ic-indice.svg" width="24" height="24" alt=""> Contenido
 
 [El problema](#-el-problema) · [La solución](#-la-solución) · [Funcionalidades](#-funcionalidades) · [Arquitectura](#-arquitectura) · [Flujos de trabajo](#-flujos-de-trabajo) · [Modelo de datos](#-modelo-de-datos) · [Criterios y decisiones](#-criterios-y-decisiones) · [Stack](#-stack) · [Estructura](#-estructura-del-repo) · [Puesta en marcha](#-puesta-en-marcha) · [Pruebas y calidad](#-pruebas-y-calidad) · [Despliegue](#-despliegue) · [Estado y pendientes](#-estado-y-pendientes) · [Licencia y autoría](#-licencia-y-autoría)
 
 <img src="docs/readme/divider.svg" alt="" width="100%">
 
-## 🧩 El problema
+## <img src="docs/readme/ic-problema.svg" width="24" height="24" alt=""> El problema
 
 La empresa tenía su catálogo industrial repartido entre hojas de cálculo, un sitio institucional y procesos manuales para cotizar, vender a clientes con precios distintos y llevar pedidos. Cada cambio de precio, de stock o de ficha técnica se repetía en varios lugares, y el sistema de gestión de la empresa no recibía la información comercial de forma ordenada.
 
-## 💡 La solución
+## <img src="docs/readme/ic-solucion.svg" width="24" height="24" alt=""> La solución
 
 **FITINOX** es una aplicación Laravel con cuatro zonas:
 
@@ -38,7 +38,7 @@ Roles: superadministración, administración, edición de contenido y clientes.
 
 <img src="docs/readme/divider.svg" alt="" width="100%">
 
-## ✨ Funcionalidades
+## <img src="docs/readme/ic-funcionalidades.svg" width="24" height="24" alt=""> Funcionalidades
 
 **Sitio público** (rol: visitante)
 - Contenido institucional bilingüe con traducciones persistidas y uso opcional de DeepL.
@@ -57,7 +57,7 @@ Roles: superadministración, administración, edición de contenido y clientes.
 
 <img src="docs/readme/divider.svg" alt="" width="100%">
 
-## 🏗️ Arquitectura
+## <img src="docs/readme/ic-arquitectura.svg" width="24" height="24" alt=""> Arquitectura
 
 Monolito Laravel con organización MVC y una capa de servicios para importación, traducción, analítica, protección de formularios e integración. El sitio y el portal de clientes se renderizan en servidor con Blade; el panel usa React y TypeScript mediante Inertia.
 
@@ -85,7 +85,7 @@ flowchart LR
 
 <img src="docs/readme/divider.svg" alt="" width="100%">
 
-## 🔄 Flujos de trabajo
+## <img src="docs/readme/ic-flujos.svg" width="24" height="24" alt=""> Flujos de trabajo
 
 **Pedido de un cliente aprobado**
 
@@ -130,7 +130,7 @@ sequenceDiagram
 
 <img src="docs/readme/divider.svg" alt="" width="100%">
 
-## 🗃️ Modelo de datos
+## <img src="docs/readme/ic-datos.svg" width="24" height="24" alt=""> Modelo de datos
 
 Eloquent y migraciones con claves foráneas, índices e identificadores únicos.
 
@@ -159,7 +159,7 @@ Las líneas de pedido guardan una copia de nombres, códigos y valores comercial
 
 <img src="docs/readme/divider.svg" alt="" width="100%">
 
-## 🧭 Criterios y decisiones
+## <img src="docs/readme/ic-criterios.svg" width="24" height="24" alt=""> Criterios y decisiones
 
 - **Histórico de pedidos inmutable.** Las líneas guardan copias de nombres, códigos y precios; un cambio en el catálogo no reescribe pedidos anteriores.
 - **Escrituras idempotentes.** La API rechaza reutilizar una clave con otro contenido y no sobrescribe datos con información de origen más antigua.
@@ -175,7 +175,7 @@ Las líneas de pedido guardan una copia de nombres, códigos y valores comercial
 
 <img src="docs/readme/divider.svg" alt="" width="100%">
 
-## 🧱 Stack
+## <img src="docs/readme/ic-stack.svg" width="24" height="24" alt=""> Stack
 
 | Capa | Tecnología | Versión |
 | --- | --- | --- |
@@ -191,7 +191,7 @@ Las líneas de pedido guardan una copia de nombres, códigos y valores comercial
 
 <img src="docs/readme/divider.svg" alt="" width="100%">
 
-## 🗂️ Estructura del repo
+## <img src="docs/readme/ic-estructura.svg" width="24" height="24" alt=""> Estructura del repo
 
 ```text
 app/                  controladores, servicios, políticas y modelos
@@ -207,7 +207,7 @@ tests/                pruebas unitarias y feature
 
 <img src="docs/readme/divider.svg" alt="" width="100%">
 
-## 🚀 Puesta en marcha
+## <img src="docs/readme/ic-arranque.svg" width="24" height="24" alt=""> Puesta en marcha
 
 Requisitos: PHP 8.3+, Composer, Node.js, npm y MySQL.
 
@@ -225,7 +225,7 @@ Variables relevantes (por nombre): `DB_*`, `MAIL_*`, `QUEUE_CONNECTION`, tokens 
 
 <img src="docs/readme/divider.svg" alt="" width="100%">
 
-## 🧪 Pruebas y calidad
+## <img src="docs/readme/ic-pruebas.svg" width="24" height="24" alt=""> Pruebas y calidad
 
 Pruebas unitarias y feature sobre sanitización HTML, headers, roles, búsquedas con payloads maliciosos, API e idempotencia, outbox, analítica, navegación responsive, jerarquías del catálogo, suscripciones e importación y exportación de inventario.
 
@@ -237,7 +237,7 @@ Registro de la versión anterior de este README: 48 pruebas y 277 aserciones apr
 
 <img src="docs/readme/divider.svg" alt="" width="100%">
 
-## 🚢 Despliegue
+## <img src="docs/readme/ic-despliegue.svg" width="24" height="24" alt=""> Despliegue
 
 Documentado para Apache/cPanel: el código y los datos privados quedan fuera del document root, y solo `public/`, el build de Vite y el enlace de storage público se exponen. Las plantillas de Apache bloquean dotfiles, manifiestos, archivos de entorno, backups y scripts.
 
@@ -247,7 +247,7 @@ Antes de un despliegue público: revisar el seeder, que contiene datos de arranq
 
 <img src="docs/readme/divider.svg" alt="" width="100%">
 
-## 📌 Estado y pendientes
+## <img src="docs/readme/ic-estado.svg" width="24" height="24" alt=""> Estado y pendientes
 
 - **Estado:** aplicación funcional con pruebas, migraciones, documentación de producción y plantillas de despliegue. Verificación local confirmada en la versión anterior del README.
 - **Último commit:** 2026-11-11, `docs: refresh project documentation and ignore deploy outputs`, en el historial local.
@@ -256,7 +256,7 @@ Antes de un despliegue público: revisar el seeder, que contiene datos de arranq
 
 <img src="docs/readme/divider.svg" alt="" width="100%">
 
-## 📄 Licencia y autoría
+## <img src="docs/readme/ic-licencia.svg" width="24" height="24" alt=""> Licencia y autoría
 
 Desarrollado por el **Ing. Santiago Abasto**.
 
