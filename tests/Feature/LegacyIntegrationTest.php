@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Category;
 use App\Models\ClientOrder;
 use App\Models\IntegrationArticle;
+use App\Models\IntegrationClient;
 use App\Models\IntegrationOutboxEvent;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -158,6 +159,79 @@ class LegacyIntegrationTest extends TestCase
             'user_id' => $user->id,
         ]);
         $this->assertSame('ATANOR S.A.', $user->fresh()->company);
+    }
+
+    public function test_client_transport_data_round_trips_through_the_api_and_prefills_the_linked_portal_user(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'client',
+            'tax_id' => '30-50065891-2',
+            'default_transport_name' => 'Carga manual',
+        ]);
+
+        $this->withToken('integration-test-token')
+            ->withHeader('Idempotency-Key', 'clients-transport-001')
+            ->postJson('/api/v1/integration/clients/upsert', [
+                'records' => [[
+                    'cod_cliente' => 76,
+                    'razon_social' => 'Cliente de prueba API',
+                    'Nro_documento' => '30-50065891-2',
+                    'transporte' => [
+                        'nombre' => 'Expreso Norte',
+                        'direccion' => 'Av. Central 123',
+                        'telefono' => '11 4000-1234',
+                        'destino' => 'Rosario, Santa Fe',
+                    ],
+                ]],
+            ])
+            ->assertOk()
+            ->assertJsonPath('linked', 1);
+
+        $this->assertDatabaseHas('integration_clients', [
+            'external_code' => '76',
+            'user_id' => $user->id,
+            'transport_name' => 'Expreso Norte',
+            'delivery_destination' => 'Rosario, Santa Fe',
+        ]);
+        $this->assertSame('Expreso Norte', $user->fresh()->default_transport_name);
+
+        $this->withToken('integration-test-token')
+            ->getJson('/api/v1/integration/clients')
+            ->assertOk()
+            ->assertJsonPath('data.0.transporte_nombre', 'Expreso Norte')
+            ->assertJsonPath('data.0.destino_entrega', 'Rosario, Santa Fe');
+    }
+
+    public function test_admin_can_create_a_client_and_link_available_api_data(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $source = IntegrationClient::create([
+            'external_code' => 'api-77',
+            'business_name' => 'Cuenta API',
+            'tax_id' => '30-11111111-9',
+            'transport_name' => 'Transportes Sur',
+            'source_hash' => hash('sha256', 'api-77'),
+            'source_payload' => [],
+            'last_received_at' => now(),
+        ]);
+
+        $this->actingAs($admin)->post('/admin/zona-clientes/clientes', [
+            'integration_client_id' => $source->id,
+            'name' => 'Comprador de prueba',
+            'email' => 'comprador@example.com',
+            'password' => 'password-segura',
+            'discount_percent' => 2,
+            'can_view_price_lists' => false,
+            'approval_status' => 'approved',
+            'send_credentials' => false,
+        ])->assertRedirect();
+
+        $created = User::where('email', 'comprador@example.com')->firstOrFail();
+        $this->assertSame('client', $created->role);
+        $this->assertTrue($created->is_active);
+        $this->assertFalse($created->can_view_price_lists);
+        $this->assertSame('Transportes Sur', $created->default_transport_name);
+        $this->assertSame($created->id, $source->fresh()->user_id);
     }
 
     public function test_it_exposes_events_once_and_acknowledges_them(): void

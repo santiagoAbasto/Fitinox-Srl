@@ -23,10 +23,7 @@ class ClientPortalController extends Controller
 {
     private function client(Request $request)
     {
-        // Estas rutas ya están protegidas por `auth`. El acceso activo se valida
-        // durante el inicio de sesión; no duplicamos la condición aquí para que
-        // una sesión recién regenerada no termine en un 403 espurio.
-        return $request->user();
+        return $request->user('client');
     }
 
     public function dashboard(Request $request)
@@ -65,6 +62,7 @@ class ClientPortalController extends Controller
     public function priceList(Request $request)
     {
         $client = $this->client($request);
+        abort_unless($client->can_view_price_lists, 403);
         return view('client.price-list', [
             'client' => $client,
             'priceLists' => ClientPriceList::query()->where('is_active', true)->orderBy('sort_order')->orderByDesc('id')->get(),
@@ -109,9 +107,9 @@ class ClientPortalController extends Controller
             'notes' => ['nullable', 'string', 'max:1000'],
             'delivery_method' => ['required', 'in:pickup,transport'],
             'transport_name' => ['nullable', 'string', 'max:120', 'required_if:delivery_method,transport'],
-            'transport_address' => ['nullable', 'string', 'max:255', 'required_if:delivery_method,transport'],
-            'transport_phone' => ['nullable', 'string', 'max:60', 'required_if:delivery_method,transport'],
-            'delivery_destination' => ['nullable', 'string', 'max:255', 'required_if:delivery_method,transport'],
+            'transport_address' => ['nullable', 'string', 'max:255'],
+            'transport_phone' => ['nullable', 'string', 'max:60'],
+            'delivery_destination' => ['nullable', 'string', 'max:255'],
             'attachment' => ['nullable', 'file', new SecureUpload(), 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:10240'],
         ]);
         $attachmentPath = $request->file('attachment')?->store('client-orders', 'local');
@@ -211,7 +209,7 @@ class ClientPortalController extends Controller
 
     public function viewPriceList(Request $request, ClientPriceList $clientPriceList)
     {
-        $this->client($request);
+        abort_unless($this->client($request)->can_view_price_lists, 403);
         [$disk] = $this->priceListLocation($clientPriceList);
 
         $extension = strtolower(pathinfo($clientPriceList->file_path, PATHINFO_EXTENSION));
@@ -219,7 +217,7 @@ class ClientPortalController extends Controller
         $host = $request->getHost();
 
         return view('client.price-list-viewer', [
-            'client' => $request->user(),
+            'client' => $this->client($request),
             'priceList' => $clientPriceList,
             'extension' => $extension,
             'office' => $office,
@@ -231,14 +229,14 @@ class ClientPortalController extends Controller
 
     public function downloadPriceList(Request $request, ClientPriceList $clientPriceList)
     {
-        $this->client($request);
+        abort_unless($this->client($request)->can_view_price_lists, 403);
         [$disk] = $this->priceListLocation($clientPriceList);
         return Storage::disk($disk)->download($clientPriceList->file_path, $clientPriceList->name.'.'.pathinfo($clientPriceList->file_path, PATHINFO_EXTENSION));
     }
 
     public function streamPriceList(Request $request, ClientPriceList $clientPriceList)
     {
-        $this->client($request);
+        abort_unless($this->client($request)->can_view_price_lists, 403);
         [$disk] = $this->priceListLocation($clientPriceList);
         $path = Storage::disk($disk)->path($clientPriceList->file_path);
         $mime = Storage::disk($disk)->mimeType($clientPriceList->file_path) ?: 'application/octet-stream';

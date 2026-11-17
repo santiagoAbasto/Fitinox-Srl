@@ -25,6 +25,13 @@ class IntegrationOutbox
             'Nro_documento' => $user->tax_id,
             'estado' => $user->approval_status,
             'activo' => (bool) $user->is_active,
+            'puede_ver_lista_precios' => (bool) $user->can_view_price_lists,
+            'transporte' => [
+                'nombre' => $user->default_transport_name,
+                'direccion' => $user->default_transport_address,
+                'telefono' => $user->default_transport_phone,
+                'destino' => $user->default_delivery_destination,
+            ],
         ]);
     }
 

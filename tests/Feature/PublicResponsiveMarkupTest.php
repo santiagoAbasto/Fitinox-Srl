@@ -70,7 +70,7 @@ class PublicResponsiveMarkupTest extends TestCase
         ]);
 
         foreach (['/clientes/productos', '/clientes/carrito', '/clientes/lista-de-precios', '/clientes/pedidos'] as $uri) {
-            $response = $this->actingAs($client)->get($uri);
+            $response = $this->actingAs($client, 'client')->get($uri);
             $response->assertOk();
             $response->assertSee('id="mobile-client-navigation"', false);
             $response->assertSee('data-mobile-nav-trigger', false);

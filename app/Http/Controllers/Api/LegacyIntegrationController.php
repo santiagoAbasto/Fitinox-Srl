@@ -165,6 +165,10 @@ class LegacyIntegrationController extends Controller
                 'email' => $client->email_raw,
                 'emails_validos' => $client->email_candidates ?? [],
                 'Nro_documento' => $client->tax_id,
+                'transporte_nombre' => $client->transport_name,
+                'transporte_direccion' => $client->transport_address,
+                'transporte_telefono' => $client->transport_phone,
+                'destino_entrega' => $client->delivery_destination,
                 'vinculado_web' => $client->user_id !== null,
                 'actualizado_en' => $client->updated_at?->toIso8601String(),
             ])->values(),
@@ -182,6 +186,19 @@ class LegacyIntegrationController extends Controller
             'records.*.razon_social' => ['required', 'string', 'max:255'],
             'records.*.email' => ['nullable', 'string', 'max:1000'],
             'records.*.Nro_documento' => ['nullable'],
+            'records.*.transporte_nombre' => ['nullable', 'string', 'max:120'],
+            'records.*.transporte_direccion' => ['nullable', 'string', 'max:255'],
+            'records.*.transporte_telefono' => ['nullable', 'string', 'max:60'],
+            'records.*.destino_entrega' => ['nullable', 'string', 'max:255'],
+            'records.*.transport_name' => ['nullable', 'string', 'max:120'],
+            'records.*.transport_address' => ['nullable', 'string', 'max:255'],
+            'records.*.transport_phone' => ['nullable', 'string', 'max:60'],
+            'records.*.delivery_destination' => ['nullable', 'string', 'max:255'],
+            'records.*.transporte' => ['nullable', 'array'],
+            'records.*.transporte.nombre' => ['nullable', 'string', 'max:120'],
+            'records.*.transporte.direccion' => ['nullable', 'string', 'max:255'],
+            'records.*.transporte.telefono' => ['nullable', 'string', 'max:60'],
+            'records.*.transporte.destino' => ['nullable', 'string', 'max:255'],
             'records.*.actualizado_en' => ['nullable', 'date'],
         ]);
 
@@ -198,12 +215,20 @@ class LegacyIntegrationController extends Controller
                 $emailRaw = $this->nullableText($record['email'] ?? null);
                 $emails = $this->extractEmails($emailRaw);
                 $taxId = $this->identifier($record['Nro_documento'] ?? null, true);
+                $transportName = $this->firstText($record, ['transporte_nombre', 'transport_name'], 'nombre');
+                $transportAddress = $this->firstText($record, ['transporte_direccion', 'transport_address'], 'direccion');
+                $transportPhone = $this->firstText($record, ['transporte_telefono', 'transport_phone'], 'telefono');
+                $deliveryDestination = $this->firstText($record, ['destino_entrega', 'delivery_destination'], 'destino');
                 $sourceTimestamp = $this->sourceTimestamp($record, $data);
                 $payload = [
                     'cod_cliente' => $externalCode,
                     'razon_social' => $businessName,
                     'email' => $emailRaw,
                     'Nro_documento' => $taxId,
+                    'transporte_nombre' => $transportName,
+                    'transporte_direccion' => $transportAddress,
+                    'transporte_telefono' => $transportPhone,
+                    'destino_entrega' => $deliveryDestination,
                 ];
                 $hash = $this->payloadHash($payload);
                 $client = IntegrationClient::where('external_code', $externalCode)->first();
@@ -231,6 +256,10 @@ class LegacyIntegrationController extends Controller
                     'email_raw' => $emailRaw,
                     'email_candidates' => $emails,
                     'tax_id' => $taxId,
+                    'transport_name' => $transportName,
+                    'transport_address' => $transportAddress,
+                    'transport_phone' => $transportPhone,
+                    'delivery_destination' => $deliveryDestination,
                     'source_updated_at' => $sourceTimestamp,
                     'source_hash' => $hash,
                     'source_payload' => $payload,
@@ -252,6 +281,14 @@ class LegacyIntegrationController extends Controller
                     $user->forceFill([
                         'company' => $businessName,
                         'tax_id' => $taxId,
+                        // La API es la fuente de los datos asignados, pero un
+                        // valor vacío nunca borra lo que administración cargó.
+                        ...array_filter([
+                            'default_transport_name' => $transportName,
+                            'default_transport_address' => $transportAddress,
+                            'default_transport_phone' => $transportPhone,
+                            'default_delivery_destination' => $deliveryDestination,
+                        ], fn ($value) => $value !== null),
                     ])->save();
                     $result['linked']++;
                 } else {
@@ -262,6 +299,17 @@ class LegacyIntegrationController extends Controller
 
             return ['ok' => true, 'resource' => 'clients', ...$result];
         });
+    }
+
+    /** Acepta el formato plano de la API y el objeto transporte de integraciones nuevas. */
+    private function firstText(array $record, array $keys, string $nestedKey): ?string
+    {
+        foreach ($keys as $key) {
+            $value = $this->nullableText($record[$key] ?? null);
+            if ($value !== null) return $value;
+        }
+
+        return $this->nullableText($record['transporte'][$nestedKey] ?? null);
     }
 
     public function events(Request $request): JsonResponse

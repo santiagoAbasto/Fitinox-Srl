@@ -10,7 +10,7 @@ class EnsureClientUser
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $user = $request->user();
+        $user = $request->user('client');
 
         if ($user?->role !== 'client' || ! $user?->is_active) {
             if (in_array($user?->role, ['super_admin', 'admin', 'editor'], true)) {

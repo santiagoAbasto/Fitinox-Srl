@@ -42,6 +42,12 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+        // Guarda separada dentro de la misma sesión: permite mantener abierto
+        // el panel administrativo y probar la Zona Clientes en otro tab.
+        'client' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
     ],
 
     /*

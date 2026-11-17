@@ -8,7 +8,8 @@ class IntegrationClient extends Model
 {
     protected $fillable = [
         'external_code', 'user_id', 'business_name', 'email_raw', 'email_candidates',
-        'tax_id', 'source_updated_at', 'source_hash', 'source_payload', 'last_received_at',
+        'tax_id', 'transport_name', 'transport_address', 'transport_phone', 'delivery_destination',
+        'source_updated_at', 'source_hash', 'source_payload', 'last_received_at',
     ];
 
     protected function casts(): array

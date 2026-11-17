@@ -123,6 +123,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/contact/details', [AdminContactController::class, 'updateDetails'])->name('contact.details.update');
     Route::patch('/contact/{contactMessage}/status', [AdminContactController::class, 'updateStatus'])->name('contact.status.update');
     Route::get('/zona-clientes', [ClientZoneController::class, 'index'])->middleware('admin.level:admin')->name('clients.index');
+    Route::post('/zona-clientes/clientes', [ClientZoneController::class, 'storeClient'])->middleware('admin.level:admin')->name('clients.users.store');
     Route::patch('/zona-clientes/clientes/{user}', [ClientZoneController::class, 'updateClient'])->middleware('admin.level:admin')->name('clients.users.update');
     Route::patch('/zona-clientes/pedidos/{clientOrder}', [ClientZoneController::class, 'updateOrder'])->middleware('admin.level:admin')->name('clients.orders.update');
     Route::post('/zona-clientes/listas-de-precios', [ClientZoneController::class, 'storePriceList'])->middleware('admin.level:admin')->name('clients.price-lists.store');
@@ -140,7 +141,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 });
 
-Route::middleware(['auth', 'client'])->prefix('clientes')->name('client.')->group(function () {
+Route::middleware(['auth:client', 'client'])->prefix('clientes')->name('client.')->group(function () {
     Route::post('/salir', [AuthController::class, 'destroyClient'])->name('logout');
     Route::get('/', [ClientPortalController::class, 'dashboard'])->name('dashboard');
     Route::get('/productos', [ClientPortalController::class, 'products'])->name('products');

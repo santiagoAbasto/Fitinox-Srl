@@ -14,12 +14,12 @@
     @php($totalWithTax = $total + $tax)
 
     <div class="mt-[58px] overflow-x-auto">
-        <table class="min-w-[1224px] w-full table-fixed border-separate border-spacing-0 text-left">
+        <table class="min-w-[1420px] w-full table-fixed border-separate border-spacing-0 text-left">
             <thead class="h-[52px] bg-[#132b3b] text-center text-[16px] font-bold leading-[24px] text-white">
                 <tr class="h-[52px]">
-                    <th class="w-[250px] rounded-tl-[10px] px-3 py-0">Cod</th>
-                    <th class="w-[155px] px-3 py-0">Nombre</th>
-                    <th class="w-[92px] px-3 py-0">Precio</th>
+                    <th class="w-[270px] rounded-tl-[10px] px-3 py-0">Cod</th>
+                    <th class="w-[290px] px-3 py-0">Nombre</th>
+                    <th class="w-[116px] px-3 py-0">Precio</th>
                     <th class="w-[96px] px-3 py-0">Descuento</th>
                     <th class="w-[142px] px-3 py-0">Precio con desc.</th>
                     <th class="w-[94px] px-3 py-0">Stock físico</th>
@@ -42,7 +42,7 @@
                                 <span class="truncate text-[16px] leading-[24px]">{{ $variant->code }}</span>
                             </div>
                         </td>
-                        <td class="border-b border-[#d8dcdd] px-3 py-0 whitespace-nowrap">{{ $variant->product->name }}</td>
+                        <td class="border-b border-[#d8dcdd] px-3 py-0"><span class="block break-words leading-[22px]">{{ $variant->product->name }}</span></td>
                         <td class="border-b border-[#d8dcdd] px-3 py-0 text-center whitespace-nowrap">USD {{ number_format($item['list_price'], 2, ',', '.') }}</td>
                         <td class="border-b border-[#d8dcdd] px-3 py-0 text-center whitespace-nowrap">{{ $item['discount'] ? '-'.rtrim(rtrim((string) $item['discount'], '0'), '.').'%' : '—' }}</td>
                         <td class="border-b border-[#d8dcdd] px-3 py-0 text-center whitespace-nowrap">USD {{ number_format($item['price'], 2, ',', '.') }}</td>
@@ -107,20 +107,21 @@
                     <label class="flex cursor-pointer items-center gap-[21px] text-[16px] font-normal leading-normal text-[#35363a]"><input type="radio" name="delivery_method" value="pickup" class="peer sr-only" @checked(old('delivery_method') === 'pickup')><span class="relative size-5 shrink-0 rounded-full border border-[#dedfe0] peer-checked:border-[#1954b7] after:absolute after:inset-[4px] after:hidden after:rounded-full after:bg-[#1954b7] peer-checked:after:block"></span><span>Retiro en fábrica</span></label>
                     <label class="mt-[18px] flex cursor-pointer items-center gap-[21px] text-[16px] font-normal leading-normal text-[#35363a]"><input type="radio" name="delivery_method" value="transport" class="peer sr-only" @checked(old('delivery_method', 'transport') === 'transport')><span class="relative size-5 shrink-0 rounded-full border border-[#dedfe0] peer-checked:border-[#1954b7] after:absolute after:inset-[4px] after:hidden after:rounded-full after:bg-[#1954b7] peer-checked:after:block"></span><span>Entrega a transporte</span></label>
                     <div data-transport-fields class="ml-[41px] mt-[15px] grid w-[506px] max-w-[calc(100%-41px)] gap-[9px]">
-                        <input name="transport_name" value="{{ old('transport_name') }}" placeholder="Nombre del Transporte" class="h-[28px] rounded-[6px] border border-[#dedfe0] px-[12px] text-[12px] font-normal leading-normal text-[#35363a] outline-none transition placeholder:text-[#939393] focus:border-[#1954b7]">
-                        <input name="transport_address" value="{{ old('transport_address') }}" placeholder="Dirección del transporte" class="h-[28px] rounded-[6px] border border-[#dedfe0] px-[12px] text-[12px] font-normal leading-normal text-[#35363a] outline-none transition placeholder:text-[#939393] focus:border-[#1954b7]">
-                        <input name="transport_phone" value="{{ old('transport_phone') }}" placeholder="Teléfono del transporte" class="h-[28px] rounded-[6px] border border-[#dedfe0] px-[12px] text-[12px] font-normal leading-normal text-[#35363a] outline-none transition placeholder:text-[#939393] focus:border-[#1954b7]">
-                        <input name="delivery_destination" value="{{ old('delivery_destination') }}" placeholder="Destino final" class="h-[28px] rounded-[6px] border border-[#dedfe0] px-[12px] text-[12px] font-normal leading-normal text-[#35363a] outline-none transition placeholder:text-[#939393] focus:border-[#1954b7]">
+                        <input name="transport_name" value="{{ old('transport_name', $client->default_transport_name) }}" placeholder="Nombre del Transporte *" class="h-[28px] rounded-[6px] border {{ $errors->has('transport_name') ? 'border-red-500 bg-red-50' : 'border-[#dedfe0]' }} px-[12px] text-[12px] font-normal leading-normal text-[#35363a] outline-none transition placeholder:text-[#939393] focus:border-[#1954b7]" aria-describedby="transport-name-error">
+                        @error('transport_name')<span id="transport-name-error" class="-mt-1 text-[12px] leading-4 text-red-600">Completá el nombre del transporte para continuar.</span>@enderror
+                        <input name="transport_address" value="{{ old('transport_address', $client->default_transport_address) }}" placeholder="Dirección del transporte" class="h-[28px] rounded-[6px] border border-[#dedfe0] px-[12px] text-[12px] font-normal leading-normal text-[#35363a] outline-none transition placeholder:text-[#939393] focus:border-[#1954b7]">
+                        <input name="transport_phone" value="{{ old('transport_phone', $client->default_transport_phone) }}" placeholder="Teléfono del transporte" class="h-[28px] rounded-[6px] border border-[#dedfe0] px-[12px] text-[12px] font-normal leading-normal text-[#35363a] outline-none transition placeholder:text-[#939393] focus:border-[#1954b7]">
+                        <input name="delivery_destination" value="{{ old('delivery_destination', $client->default_delivery_destination) }}" placeholder="Destino final" class="h-[28px] rounded-[6px] border border-[#dedfe0] px-[12px] text-[12px] font-normal leading-normal text-[#35363a] outline-none transition placeholder:text-[#939393] focus:border-[#1954b7]">
                     </div>
                     @error('delivery_method')<span class="mt-2 block text-[12px] text-red-600">{{ $message }}</span>@enderror
                 </div>
             </article>
 
-            <article class="mt-[24px] h-[453px] w-[599px] max-w-full overflow-hidden rounded-[6px] border border-[#dedfe0] bg-white">
+            <article class="mt-[24px] w-[599px] max-w-full overflow-hidden rounded-[6px] border border-[#dedfe0] bg-white">
                 <h2 class="h-[61px] border-b border-[#dedfe0] px-[27px] pt-[20px] pb-[14px] text-[22px] font-semibold leading-normal text-[#35363a]">Tu pedido</h2>
                 <div class="flex h-[131px] items-center justify-between border-b border-[#dedfe0] px-[27px] text-[16px] leading-[24px] text-[#35363a]"><span>{{ $items->sum('quantity') }} {{ $items->sum('quantity') === 1 ? 'Item' : 'Items' }}</span><strong>USD {{ number_format($total, 2, ',', '.') }}</strong></div>
                 <div class="flex h-[81px] items-center justify-between border-b border-[#dedfe0] px-[27px] text-[16px] leading-[24px] text-[#4f565a]"><span>Subtotal</span><strong class="text-[#35363a]">USD {{ number_format($subtotal, 2, ',', '.') }}</strong></div>
-                <div class="flex h-[114px] flex-col justify-center gap-[12px] border-b border-[#dedfe0] px-[27px] text-[16px] leading-[24px] text-[#4f565a]"><div class="flex justify-between"><span>Bonificaciones</span><span>A definir</span></div><div class="flex justify-between"><span>IVA (21%)</span><strong class="text-[#35363a]">USD {{ number_format($tax, 2, ',', '.') }}</strong></div><div class="flex justify-between"><span>Otros impuestos</span><span>No incluidos</span></div></div>
+                <div class="flex min-h-[76px] flex-col justify-center gap-[12px] border-b border-[#dedfe0] px-[27px] py-4 text-[16px] leading-[24px] text-[#4f565a]">@if((float) $client->discount_percent > 0)<div class="flex justify-between"><span>Bonificación</span><strong class="text-[#35363a]">-{{ rtrim(rtrim((string) $client->discount_percent, '0'), '.') }}%</strong></div>@endif<div class="flex justify-between"><span>IVA (21%)</span><strong class="text-[#35363a]">USD {{ number_format($tax, 2, ',', '.') }}</strong></div></div>
                 <div class="flex h-[65px] items-center justify-between px-[27px] text-[16px] font-bold leading-[24px] text-[#35363a]"><span>TOTAL <small class="text-[12px]">(IVA incluido)</small></span><strong class="text-[20px]">USD {{ number_format($totalWithTax, 2, ',', '.') }}</strong></div>
             </article>
             <div class="mt-[26px] grid grid-cols-2 gap-[24px]"><a href="{{ route('client.products') }}" class="inline-flex h-[40px] items-center justify-center rounded-[7px] border border-[#132b3b] px-[20px] text-[12px] font-semibold text-[#132b3b] transition hover:-translate-y-px hover:bg-[#edf3f7]">CANCELAR PEDIDO</a><button @disabled($items->isEmpty()) class="inline-flex h-[40px] items-center justify-center rounded-[7px] bg-[#132b3b] px-[20px] text-[12px] font-semibold text-white transition hover:-translate-y-px hover:bg-[#1954b7] hover:shadow-[0_8px_20px_rgba(25,84,183,.22)] disabled:cursor-not-allowed disabled:opacity-45">REALIZAR PEDIDO</button></div>
